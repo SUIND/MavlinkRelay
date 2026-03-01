@@ -1,0 +1,27 @@
+server:
+  host: "0.0.0.0"
+  port: 14550
+
+tls:
+  cert: "/certs/cert.pem"
+  key: "/certs/key.pem"
+
+auth:
+  tokens:
+    - token: "AAAAAAAAAAAAAAAAAAAAAA=="
+      role: "vehicle"
+      vehicle_id: "BB_000001"
+    - token: "u7u7u7u7u7u7u7u7u7u7uw=="
+      role: "gcs"
+      gcs_id: "gcs-test"
+
+relay:
+  bulk_queue_max: 50
+  priority_queue_max: 100
+
+keepalive:
+  interval_s: 15
+  timeout_s: 45
+
+log_level: "DEBUG"
+log_format: "text"

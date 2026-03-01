@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  relay:
+    build: .
+    image: mavlink-relay-server:latest
+    ports:
+      - "14550:14550/udp"
+    volumes:
+      - ./certs:/app/certs:ro
+      - ./config.example.yaml:/config/config.yaml:ro
+    environment:
+      - LOG_LEVEL=INFO
+    restart: unless-stopped

@@ -1,0 +1,6 @@
+devel_space: /home/kevin/workspace/MavlinkRelay/devel
+install: false
+install_space: /home/kevin/workspace/MavlinkRelay/install
+profile: default
+source_space: /home/kevin/workspace/MavlinkRelay/jetson
+workspace: /home/kevin/workspace/MavlinkRelay

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="server_port" default="15551" />
+
+  <node name="mock_quic_server"
+        pkg="mavlink_quic_relay"
+        type="mock_quic_server.py"
+        args="--port $(arg server_port)"
+        output="screen" />
+
+  <node name="mavlink_quic_relay"
+        pkg="mavlink_quic_relay"
+        type="mavlink_quic_relay_node"
+        output="screen">
+    <param name="server_host"   value="127.0.0.1" />
+    <param name="server_port"   value="$(arg server_port)" />
+    <param name="auth_token"    value="TESTTOKEN" />
+    <param name="vehicle_id"    value="BB_000001" />
+    <param name="ca_cert_path"  value="" />
+    <param name="alpn"          value="mavlink-quic-v1" />
+  </node>
+
+  <test test-name="test_relay_roundtrip"
+        pkg="mavlink_quic_relay"
+        type="test_relay_roundtrip.py"
+        time-limit="30" />
+</launch>

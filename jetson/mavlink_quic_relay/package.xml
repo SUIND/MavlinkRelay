@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>mavlink_quic_relay</name>
+  <version>0.1.0</version>
+  <description>
+    ROS 1 Noetic C++ QUIC relay node for MAVLink messages on NVIDIA Jetson (ARM64).
+    Bridges ROS MAVLink topics to a remote QUIC server using msquic.
+    Wire format: [u16_le 2-byte length][raw MAVLink bytes].
+    ALPN: mavlink-quic-v1.
+  </description>
+
+  <maintainer email="todo@example.com">Kevin</maintainer>
+
+  <license>MIT</license>
+
+  <url type="repository">https://github.com/your-org/MavlinkRelay</url>
+
+  <!-- Build tool -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Build + exec dependencies -->
+  <depend>roscpp</depend>
+  <depend>mavros_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <!-- Test only -->
+  <test_depend>rostest</test_depend>
+
+  <export>
+  </export>
+</package>

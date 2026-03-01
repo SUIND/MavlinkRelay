@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- ═══════════════════════════════════════════════════════════
+       mavlink_quic_relay — QUIC relay node for NVIDIA Jetson
+
+       Usage:
+         roslaunch mavlink_quic_relay relay.launch
+         roslaunch mavlink_quic_relay relay.launch server_host:=1.2.3.4 server_port:=14550
+         roslaunch mavlink_quic_relay relay.launch auth_token:=MySecretToken
+       ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Launch arguments (override YAML defaults) -->
+  <arg name="server_host"  default="" doc="QUIC server hostname or IP (overrides YAML)" />
+  <arg name="server_port"  default="0" doc="QUIC server port (overrides YAML if nonzero)" />
+  <arg name="auth_token"   default="" doc="Auth token (overrides YAML if non-empty)" />
+  <arg name="vehicle_id"   default="" doc="Vehicle ID in BB_NNNNNN format (overrides YAML if non-empty)" />
+  <arg name="params_file"  default="$(find mavlink_quic_relay)/config/relay_params.yaml"
+       doc="Path to YAML params file" />
+
+  <node name="mavlink_quic_relay"
+        pkg="mavlink_quic_relay"
+        type="mavlink_quic_relay_node"
+        output="screen"
+        required="true">
+
+    <!-- Load base parameters from YAML file -->
+    <rosparam command="load" file="$(arg params_file)" />
+
+    <!-- Override individual params from launch args if provided -->
+    <param name="server_host" value="$(arg server_host)"
+           if="$(eval arg('server_host') != '')" />
+    <param name="server_port" value="$(arg server_port)"
+           if="$(eval arg('server_port') != 0)" />
+    <param name="auth_token"  value="$(arg auth_token)"
+           if="$(eval arg('auth_token') != '')" />
+    <param name="vehicle_id"  value="$(arg vehicle_id)"
+           if="$(eval arg('vehicle_id') != '')" />
+
+  </node>
+</launch>

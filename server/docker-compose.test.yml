@@ -1,0 +1,30 @@
+services:
+  relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mavlink-relay-server:test
+    networks:
+      - relay-test-net
+    volumes:
+      - ./certs:/certs:ro
+      - ./tests/integration/config.test.yaml:/config/config.yaml:ro
+    environment:
+      - LOG_LEVEL=DEBUG
+
+  test-client:
+    build:
+      context: .
+      dockerfile: tests/integration/Dockerfile.test
+    networks:
+      - relay-test-net
+    environment:
+      - RELAY_HOST=relay
+      - RELAY_PORT=14550
+    depends_on:
+      - relay
+    command: ["sh", "-c", "sleep 5 && python test_client.py"]
+
+networks:
+  relay-test-net:
+    driver: bridge

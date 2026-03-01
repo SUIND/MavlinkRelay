@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mavlink-relay-server"
+version = "0.1.0"
+description = "MAVLink QUIC Relay Server"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "MAVLink Relay Contributors"}
+]
+
+dependencies = [
+    "aioquic>=1.3.0",
+    "cbor2>=5.8.0",
+    "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "mypy>=1.19.1",
+]
+
+[project.scripts]
+mavlink-relay-server = "mavlink_relay_server.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mavlink_relay_server"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

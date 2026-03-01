@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════
+# mavlink_quic_relay — ROS 1 parameter configuration
+#
+# Load order: relay.launch loads this file first, then any
+# roslaunch command-line overrides are applied on top.
+#
+# All parameters are scoped under the node namespace:
+#   /mavlink_quic_relay/<param>
+# ═══════════════════════════════════════════════════════════════
+
+# ── QUIC Server connection ────────────────────────────────────
+server_host: "quic.yourdomain.com"  # Hostname or IP of the Python aioquic relay server
+server_port: 5000                   # UDP port (aioquic default; server config may use 14550)
+
+# ── Authentication ────────────────────────────────────────────
+# REQUIRED: replace "CHANGE_ME" before deployment.
+# Node exits with ROS_FATAL if this is still "CHANGE_ME" or empty.
+auth_token: "CHANGE_ME"            # Base64-encoded token matching server config auth.tokens[].token
+vehicle_id: "BB_000001"             # Vehicle ID string in BB_NNNNNN format (matches server auth.tokens[].vehicle_id)
+
+# ── TLS ───────────────────────────────────────────────────────
+ca_cert_path: "/etc/mavlink_relay/server_ca.crt"  # Path to CA cert for server TLS verification
+
+# ── ALPN ─────────────────────────────────────────────────────
+# Must match server ALPN exactly. Do not change unless coordinated with server team.
+alpn: "mavlink-quic-v1"
+
+# ── ROS Topics ────────────────────────────────────────────────
+mavlink_from_topic: "/mavlink/from"  # Subscribe: MAVLink frames from FC → relay → server
+mavlink_to_topic: "/mavlink/to"      # Publish:   MAVLink frames from server → relay → FC
+
+# ── Outbound queue sizes ──────────────────────────────────────
+priority_queue_size: 100  # Max frames in priority outbound queue (HEARTBEAT, CMD, etc.); never drops
+bulk_queue_size: 500      # Max frames in bulk outbound queue (ATTITUDE, etc.); drops oldest when full
+inbound_queue_max: 500        # Max frames in inbound queue (server→relay→FC); drops oldest when full
+drain_period_ms: 1.0          # Period of inbound queue drain timer (ms); how often /mavlink/to is published
+
+# ── QUIC settings ─────────────────────────────────────────────
+keepalive_interval_ms: 15000  # PING interval (ms); keeps cellular NAT mappings alive (NAT timeout ~30–60 s)
+idle_timeout_ms: 60000        # QUIC idle timeout (ms); connection dropped if no activity for this long
+
+# ── Diagnostic warnings ───────────────────────────────────────
+no_message_warn_timeout_s: 10.0  # Emit ROS_WARN if no /mavlink/from messages received after this many seconds
