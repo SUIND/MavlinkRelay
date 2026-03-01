@@ -2,8 +2,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy pyproject.toml and source for layer caching
+# Copy pyproject.toml, README and source for layer caching
 COPY pyproject.toml .
+COPY README.md .
 COPY mavlink_relay_server/ ./mavlink_relay_server/
 
 # Install package without cache

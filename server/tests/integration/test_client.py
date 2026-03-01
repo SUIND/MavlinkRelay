@@ -25,11 +25,14 @@ RELAY_PORT = int(os.environ.get("RELAY_PORT", "14550"))
 
 VEHICLE_TOKEN = b"\x00" * 16  # base64: AAAAAAAAAAAAAAAAAAAAAA==
 GCS_TOKEN = b"\xbb" * 16  # base64: u7u7u7u7u7u7u7u7u7u7uw==
-VEHICLE_ID = 1
+VEHICLE_ID = "BB_000001"
 
-# Fixed QUIC stream IDs (client-initiated bidirectional)
+# Fixed QUIC stream IDs
+# Client-initiated bidirectional: 0 (control), 4 (priority out), 8 (bulk out)
+# Server-initiated bidirectional: 1 (priority in from server), 5 (bulk in from server)
 CONTROL_STREAM_ID = 0
-PRIORITY_STREAM_ID = 4
+PRIORITY_STREAM_ID = 4        # used by vehicle to send MAVLink frames
+SERVER_PRIORITY_STREAM_ID = 1  # used by server to push frames to GCS
 
 
 def encode_frame(payload: bytes) -> bytes:
@@ -112,7 +115,7 @@ class GCSClient(QuicConnectionProtocol):
         elif isinstance(event, StreamDataReceived):
             if event.stream_id == CONTROL_STREAM_ID:
                 self._feed_control(event.data)
-            elif event.stream_id == PRIORITY_STREAM_ID:
+            elif event.stream_id == SERVER_PRIORITY_STREAM_ID:
                 self._feed_mavlink(event.data)
 
     def _feed_control(self, data: bytes):

@@ -7,7 +7,7 @@ import asyncio
 import logging
 import sys
 
-from mavlink_relay_server.config import ServerConfig
+from mavlink_relay_server.config import ServerConfig, load_config
 
 
 def _build_config(args: argparse.Namespace) -> ServerConfig:
@@ -21,6 +21,18 @@ def _build_config(args: argparse.Namespace) -> ServerConfig:
     Returns:
         A :class:`~mavlink_relay_server.config.ServerConfig` populated from CLI flags.
     """
+    # If a config file is provided, load from YAML and allow CLI overrides.
+    if args.config:
+        cli_overrides: dict[str, object] = {"host": args.host, "port": args.port}
+        if args.cert:
+            cli_overrides["cert"] = args.cert
+        if args.key:
+            cli_overrides["key"] = args.key
+        if args.log_level:
+            cli_overrides["log_level"] = args.log_level
+        return load_config(args.config, cli_overrides)
+
+    # No config file: cert and key are required via CLI
     if not args.cert:
         sys.exit("error: --cert is required (path to TLS certificate)")
     if not args.key:

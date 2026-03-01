@@ -387,9 +387,17 @@ class RelayProtocol(QuicConnectionProtocol):
             vehicle_id = self._session_id
             subscribers = self._registry.get_subscribers(vehicle_id)  # type: ignore[arg-type]
             for gcs_session in subscribers:
+                # Use the server-initiated outbound stream IDs stored on the
+                # GCS session, not the vehicle's inbound stream IDs — QUIC
+                # stream IDs are per-connection and directional.
+                out_stream_id = (
+                    gcs_session.bulk_stream_id
+                    if is_bulk
+                    else gcs_session.priority_stream_id
+                )
                 for frame in frames:
                     await self._enqueue_or_relay(
-                        gcs_session.protocol, stream_id, frame, is_bulk=is_bulk
+                        gcs_session.protocol, out_stream_id, frame, is_bulk=is_bulk
                     )
             for gcs_session in subscribers:
                 if not is_bulk:
@@ -401,7 +409,17 @@ class RelayProtocol(QuicConnectionProtocol):
                 return
             async with vehicle_session.write_lock:
                 for frame in frames:
-                    vehicle_session.protocol._send_frame(stream_id, frame)
+                    try:
+                        vehicle_session.protocol._send_frame(stream_id, frame)
+                    except ValueError as exc:
+                        logger.warning(
+                            "GCS '%s' → vehicle '%s': cannot send on stream %d: %s",
+                            self._session_id,
+                            vehicle_session.vehicle_id,
+                            stream_id,
+                            exc,
+                        )
+                        return
                 vehicle_session.protocol.transmit()
 
     async def _enqueue_or_relay(
@@ -424,7 +442,15 @@ class RelayProtocol(QuicConnectionProtocol):
             is_bulk: True if this is a bulk-stream frame (stream 8).
         """
         if not is_bulk:
-            target._send_frame(stream_id, frame)
+            try:
+                target._send_frame(stream_id, frame)
+            except ValueError as exc:
+                logger.warning(
+                    "Cannot relay priority frame to '%s' on stream %d: %s",
+                    target._session_id,
+                    stream_id,
+                    exc,
+                )
         else:
             if target._bulk_out_queue.full():
                 try:

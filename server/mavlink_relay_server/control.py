@@ -24,10 +24,18 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Fixed QUIC stream IDs used by clients.
+# Fixed QUIC stream IDs used by clients (client-initiated, 4n format).
 _CONTROL_STREAM_ID: int = 0
 _PRIORITY_STREAM_ID: int = 4
 _BULK_STREAM_ID: int = 8
+
+# Server-initiated bidirectional stream IDs used when the server pushes frames
+# *to* a GCS client.  QUIC (RFC 9000) assigns server-initiated bidi streams
+# the IDs 1, 5, 9, … (4n+1), so these are the server-side counterparts of
+# the client's priority (4) and bulk (8) channels.
+_SERVER_PRIORITY_STREAM_ID: int = 1
+_SERVER_BULK_STREAM_ID: int = 5
+
 _MAX_CONTROL_PAYLOAD: int = 65536  # 64 KiB
 
 
@@ -130,7 +138,7 @@ def handle_auth(
             registry.register_gcs(
                 gcs_id,
                 protocol,
-                (_CONTROL_STREAM_ID, _PRIORITY_STREAM_ID, _BULK_STREAM_ID),
+                (_CONTROL_STREAM_ID, _SERVER_PRIORITY_STREAM_ID, _SERVER_BULK_STREAM_ID),
             )
         )
         protocol._session_id = gcs_id
