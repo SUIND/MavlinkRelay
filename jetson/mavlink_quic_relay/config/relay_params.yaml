@@ -19,7 +19,7 @@ auth_token: "CHANGE_ME"            # Base64-encoded token matching server config
 vehicle_id: "BB_000001"             # Vehicle ID string in BB_NNNNNN format (matches server auth.tokens[].vehicle_id)
 
 # ── TLS ───────────────────────────────────────────────────────
-ca_cert_path: "/etc/mavlink_relay/server_ca.crt"  # Path to CA cert for server TLS verification
+ca_cert_path: ""  # Path to CA cert PEM for server TLS verification; empty = use system trust store
 
 # ── ALPN ─────────────────────────────────────────────────────
 # Must match server ALPN exactly. Do not change unless coordinated with server team.

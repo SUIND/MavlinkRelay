@@ -13,7 +13,7 @@ auth:
       vehicle_id: "BB_000001"
     - token: "BBBBBBBBBBBBBBBBBBBBBB=="
       role: "gcs"
-      gcs_id: "gcs-alpha"
+      gcs_id: "GCS_000001"
 
 relay:
   bulk_queue_max: 100

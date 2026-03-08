@@ -51,7 +51,7 @@ Wire protocol
 
 Authentication (Stream 0)
 
-- Client → Server: CBOR map `{"type": "AUTH", "token": <bytes>, "role": "vehicle", "vehicle_id": <uint>}` on Stream 0 (length-prefixed with `[u16_le]` like all frames).
+- Client → Server: CBOR map `{"type": "AUTH", "token": <bytes>, "role": "vehicle", "vehicle_id": <text>}` on Stream 0 (length-prefixed with `[u16_le]` like all frames).
 - Server → Client success: CBOR map `{"type": "AUTH_OK"}`.
 - Server → Client failure: CBOR map `{"type": "AUTH_FAIL", "reason": "..."}` — client applies a 60s reconnect penalty.
 - After AUTH_OK the server sends keepalive `{"type": "PING", "ts": <unix_float>}` every 15s; client must reply `{"type": "PONG", "ts": <same_ts>}` on the control stream.
@@ -184,7 +184,7 @@ roslaunch mavlink_quic_relay relay.launch \
   server_host:=relay.example.com \
   server_port:=14550 \
   auth_token:=MySecretToken \
-  vehicle_id:=2
+  vehicle_id:=BB_000001
 ```
 
 Alternative: rosrun (requires params pre-loaded on param server):
