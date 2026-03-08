@@ -1,14 +1,20 @@
-version: '3.8'
-
 services:
   relay:
-    build: .
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     image: mavlink-relay-server:latest
     ports:
       - "14550:14550/udp"
     volumes:
       - ./certs:/app/certs:ro
-      - ./config.example.yaml:/config/config.yaml:ro
+      - ./data:/data
     environment:
+      - RELAY_DB=/data/relay.db
+      - RELAY_CERT_PATH=/app/certs/cert.pem
+      - RELAY_KEY_PATH=/app/certs/key.pem
       - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
     restart: unless-stopped

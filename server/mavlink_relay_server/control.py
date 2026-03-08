@@ -3,7 +3,7 @@
 Handles the control stream (stream 0) message lifecycle:
 - Encoding/decoding CBOR messages with length-prefix framing
 - AUTH: validate token, register session in registry, send AUTH_OK/AUTH_FAIL
-- SUBSCRIBE (GCS only): subscribe GCS to a vehicle, send SUB_OK/SUB_FAIL
+- SUBSCRIBE (GCS only): ACL-check then subscribe GCS to a vehicle, send SUB_OK/SUB_FAIL
 - PING: respond immediately with PONG containing the same timestamp
 """
 
@@ -18,7 +18,7 @@ import cbor2  # type: ignore[reportMissingImports]
 from mavlink_relay_server.framing import encode_frame
 
 if TYPE_CHECKING:
-    from mavlink_relay_server.config import TokenStore
+    from mavlink_relay_server.config import DatabaseStore
     from mavlink_relay_server.protocol import RelayProtocol
     from mavlink_relay_server.registry import SessionRegistry
 
@@ -73,13 +73,17 @@ def handle_auth(
     protocol: RelayProtocol,
     msg: dict[str, Any],
     registry: SessionRegistry,
-    token_store: TokenStore,
+    token_store: DatabaseStore,
 ) -> bool:
     """Validate token, register session, send AUTH_OK or AUTH_FAIL.
 
     Validates the token from the control message against the token store.
     On failure, sends AUTH_FAIL and schedules a connection close.
     On success, registers the session in the registry and sends AUTH_OK.
+
+    For GCS connections the ``allowed_vehicle_id`` from the database is stored
+    on the protocol instance so that :func:`handle_subscribe` can enforce the
+    ACL without an additional DB round-trip.
 
     Args:
         protocol: The :class:`~mavlink_relay_server.protocol.RelayProtocol`
@@ -102,6 +106,10 @@ def handle_auth(
 
     token_bytes = msg.get("token")
     if not isinstance(token_bytes, bytes):
+        logger.warning(
+            "AUTH failed: token field is %s, expected bytes",
+            type(msg.get("token")).__name__,
+        )
         _send_auth_fail(protocol, "token must be bytes")
         return False
 
@@ -111,13 +119,33 @@ def handle_auth(
         _send_auth_fail(protocol, "invalid token")
         return False
 
+    claimed_id = msg.get("vehicle_id")
+    if not isinstance(claimed_id, str) or not claimed_id:
+        logger.warning("AUTH failed: missing or invalid vehicle_id field")
+        _send_auth_fail(protocol, "vehicle_id required")
+        return False
+
     role = token_config.role
     if role == "vehicle":
-        vehicle_id = token_config.vehicle_id
-        if vehicle_id is None:
-            logger.error("TokenConfig for vehicle missing vehicle_id")
-            _send_auth_fail(protocol, "server configuration error")
+        if claimed_id != token_config.identity:
+            logger.warning(
+                "AUTH failed: vehicle_id mismatch (claimed=%r, expected=%r)",
+                claimed_id,
+                token_config.identity,
+            )
+            _send_auth_fail(protocol, "vehicle_id mismatch")
             return False
+    elif role == "gcs":
+        if claimed_id != token_config.allowed_vehicle_id:
+            logger.warning(
+                "AUTH failed: GCS vehicle_id mismatch (claimed=%r, authorised=%r)",
+                claimed_id,
+                token_config.allowed_vehicle_id,
+            )
+            _send_auth_fail(protocol, "vehicle_id mismatch")
+            return False
+    if role == "vehicle":
+        vehicle_id = token_config.identity
         asyncio.ensure_future(
             registry.register_vehicle(
                 vehicle_id,
@@ -129,20 +157,27 @@ def handle_auth(
         logger.info("Vehicle '%s' authenticated", vehicle_id)
 
     elif role == "gcs":
-        gcs_id = token_config.gcs_id
-        if gcs_id is None:
-            logger.error("TokenConfig for GCS missing gcs_id")
-            _send_auth_fail(protocol, "server configuration error")
-            return False
+        gcs_id = token_config.identity
+        # Store the ACL on the protocol — used by handle_subscribe to reject
+        # any SUBSCRIBE request for a vehicle this GCS is not authorised for.
+        protocol._allowed_vehicle_id = token_config.allowed_vehicle_id
         asyncio.ensure_future(
             registry.register_gcs(
                 gcs_id,
                 protocol,
-                (_CONTROL_STREAM_ID, _SERVER_PRIORITY_STREAM_ID, _SERVER_BULK_STREAM_ID),
+                (
+                    _CONTROL_STREAM_ID,
+                    _SERVER_PRIORITY_STREAM_ID,
+                    _SERVER_BULK_STREAM_ID,
+                ),
             )
         )
         protocol._session_id = gcs_id
-        logger.info("GCS '%s' authenticated", gcs_id)
+        logger.info(
+            "GCS '%s' authenticated (allowed vehicle: %s)",
+            gcs_id,
+            token_config.allowed_vehicle_id,
+        )
 
     else:
         logger.error("TokenConfig has unknown role '%s'", role)
@@ -173,7 +208,17 @@ def handle_subscribe(
     """Subscribe a GCS session to a vehicle.
 
     Only valid for connections that have authenticated as GCS role.
-    Sends SUB_OK on success or SUB_FAIL if the vehicle is not found or GCS is already subscribed.
+
+    Security gates (in order):
+    1. Role check — must be ``'gcs'``.
+    2. Field validation — ``vehicle_id`` must be a non-empty str.
+    3. ACL check — the requested ``vehicle_id`` must match the
+       ``allowed_vehicle_id`` recorded on the protocol at AUTH time.
+       This prevents a GCS from subscribing to any vehicle other than the
+       one it is provisioned for, regardless of what value it sends.
+    4. Existence check — the vehicle must currently be connected.
+
+    Sends SUB_OK on success, SUB_FAIL otherwise.
 
     Args:
         protocol: The :class:`~mavlink_relay_server.protocol.RelayProtocol`
@@ -193,10 +238,34 @@ def handle_subscribe(
         logger.warning("SUBSCRIBE missing or invalid vehicle_id field")
         return
 
+    # ------------------------------------------------------------------
+    # ACL check: the requested vehicle_id must match what the DB says
+    # this GCS is authorised for.
+    # ------------------------------------------------------------------
+    allowed: str | None = getattr(protocol, "_allowed_vehicle_id", None)
+    if allowed is None or vehicle_id != allowed:
+        logger.warning(
+            "GCS '%s' tried to subscribe to vehicle '%s' but is only authorised for '%s' — rejected",
+            protocol._session_id,
+            vehicle_id,
+            allowed,
+        )
+        acl_fail: dict[str, Any] = {
+            "type": "SUB_FAIL",
+            "vehicle_id": vehicle_id,
+            "reason": "not authorised for this vehicle",
+        }
+        protocol._send_control(encode_control(acl_fail))
+        protocol.transmit()
+        return
+
+    # ------------------------------------------------------------------
+    # Sanity check: vehicle must be connected
+    # ------------------------------------------------------------------
     vehicle_session = registry.get_vehicle(vehicle_id)
     if vehicle_session is None:
         logger.info(
-            "GCS '%s' tried to subscribe to unknown vehicle %s",
+            "GCS '%s' tried to subscribe to vehicle '%s' (authorised, but not connected)",
             protocol._session_id,
             vehicle_id,
         )
@@ -236,7 +305,7 @@ def handle_subscribe(
     sub_ok: dict[str, Any] = {"type": "SUB_OK", "vehicle_id": vehicle_id}
     protocol._send_control(encode_control(sub_ok))
     protocol.transmit()
-    logger.info("GCS '%s' subscribed to vehicle %s (SUB_OK sent)", gcs_id, vehicle_id)
+    logger.info("GCS '%s' subscribed to vehicle '%s' (SUB_OK sent)", gcs_id, vehicle_id)
 
 
 def handle_ping(protocol: RelayProtocol, msg: dict[str, Any]) -> None:

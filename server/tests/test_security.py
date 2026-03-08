@@ -1,10 +1,3 @@
-"""Security-focused tests for the MAVLink QUIC relay server.
-
-Covers: re-auth attack prevention, auth-fail CBOR content, reason phrase,
-decode_control size limit, FrameDecoder buffer overflow, and TokenStore
-constant-time comparison.
-"""
-
 from __future__ import annotations
 
 # pyright: reportMissingImports=false
@@ -18,7 +11,7 @@ from unittest.mock import MagicMock
 import cbor2
 import pytest
 
-from mavlink_relay_server.config import TokenConfig, TokenStore
+from mavlink_relay_server.config import DatabaseStore, TokenConfig
 from mavlink_relay_server.control import decode_control, handle_auth, handle_subscribe
 from mavlink_relay_server.framing import FrameDecoder
 from mavlink_relay_server.protocol import RelayProtocol
@@ -42,6 +35,7 @@ def _make_proto() -> MagicMock:
     proto._authed = False
     proto._role = None
     proto._session_id = None
+    proto._allowed_vehicle_id = None
     proto._auth_timeout_handle = MagicMock()
     proto._quic = MagicMock()
     return proto
@@ -50,16 +44,24 @@ def _make_proto() -> MagicMock:
 def _make_token_store(
     vehicle_token: bytes = b"\x00" * 16,
     gcs_token: bytes = b"\xbb" * 16,
-) -> TokenStore:
+) -> DatabaseStore:
     vehicle_b64 = base64.b64encode(vehicle_token).decode("ascii")
     gcs_b64 = base64.b64encode(gcs_token).decode("ascii")
     tokens = [
         TokenConfig(
-            token_b64=vehicle_b64, role="vehicle", vehicle_id="BB_000001", gcs_id=None
+            token_b64=vehicle_b64,
+            role="vehicle",
+            identity="BB_000001",
+            allowed_vehicle_id=None,
         ),
-        TokenConfig(token_b64=gcs_b64, role="gcs", vehicle_id=None, gcs_id="gcs-alpha"),
+        TokenConfig(
+            token_b64=gcs_b64,
+            role="gcs",
+            identity="GCS_000001",
+            allowed_vehicle_id="BB_000001",
+        ),
     ]
-    return TokenStore(tokens)
+    return DatabaseStore(tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -68,50 +70,54 @@ def _make_token_store(
 
 
 async def test_re_auth_attack_ignored() -> None:
-    """Second handle_auth call on an already-authed session must return False
-    and must NOT send another AUTH_OK (send_control call count stays at 1)."""
     registry = SessionRegistry()
     token_store = _make_token_store()
     proto = _make_proto()
     vehicle_token = b"\x00" * 16
 
-    # First auth — succeeds
     ok1 = handle_auth(
-        proto, {"type": "AUTH", "token": vehicle_token}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": vehicle_token, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok1 is True
     assert proto._authed is True
     assert proto._send_control.call_count == 1
 
-    # Second auth — must be rejected silently
     ok2 = handle_auth(
-        proto, {"type": "AUTH", "token": vehicle_token}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": vehicle_token, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok2 is False
-    # No extra _send_control call
     assert proto._send_control.call_count == 1
     assert proto._authed is True
 
 
 async def test_re_auth_attack_with_different_token_ignored() -> None:
-    """Re-auth with a *different* valid token must also be rejected.
-    Role and session_id must remain from the original auth."""
     registry = SessionRegistry()
     token_store = _make_token_store()
     proto = _make_proto()
     vehicle_token = b"\x00" * 16
     gcs_token = b"\xbb" * 16
 
-    # First auth as vehicle
     ok1 = handle_auth(
-        proto, {"type": "AUTH", "token": vehicle_token}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": vehicle_token, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok1 is True
     assert proto._role == "vehicle"
     assert proto._session_id == "BB_000001"
 
     ok2 = handle_auth(
-        proto, {"type": "AUTH", "token": gcs_token}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": gcs_token, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok2 is False
     assert proto._role == "vehicle"
@@ -119,7 +125,6 @@ async def test_re_auth_attack_with_different_token_ignored() -> None:
 
 
 def test_subscribe_before_auth_is_noop() -> None:
-    """handle_subscribe on an unauthenticated proto (role=None) must be a no-op."""
     registry = SessionRegistry()
     proto = _make_proto()
     proto._authed = False
@@ -137,7 +142,6 @@ def test_subscribe_before_auth_is_noop() -> None:
 
 
 async def test_auth_fail_sends_auth_fail_cbor() -> None:
-    """Wrong token must cause _send_control to be called with an AUTH_FAIL CBOR message."""
     registry = SessionRegistry()
     token_store = _make_token_store()
     proto = _make_proto()
@@ -153,19 +157,16 @@ async def test_auth_fail_sends_auth_fail_cbor() -> None:
 
 
 async def test_auth_fail_schedules_close() -> None:
-    """After a failed auth, proto._quic.close must eventually be called."""
     registry = SessionRegistry()
     token_store = _make_token_store()
     proto = _make_proto()
 
     handle_auth(proto, {"type": "AUTH", "token": b"\xff" * 16}, registry, token_store)
-    # call_soon callbacks run after yielding to the event loop
     await asyncio.sleep(0)
     proto._quic.close.assert_called()
 
 
 async def test_auth_fail_reason_phrase_is_str() -> None:
-    """_send_auth_fail must close with reason_phrase='auth failed' (plain str, no info leak)."""
     registry = SessionRegistry()
     token_store = _make_token_store()
     proto = _make_proto()
@@ -176,7 +177,6 @@ async def test_auth_fail_reason_phrase_is_str() -> None:
     proto._quic.close.assert_called()
     call_kwargs = proto._quic.close.call_args.kwargs
     assert call_kwargs.get("reason_phrase") == "auth failed"
-    # Must be a plain str (not an f-string result that could leak token data)
     assert isinstance(call_kwargs["reason_phrase"], str)
 
 
@@ -186,14 +186,12 @@ async def test_auth_fail_reason_phrase_is_str() -> None:
 
 
 def test_decode_control_oversized_raises() -> None:
-    """Payloads larger than 65536 bytes must raise ValueError."""
     oversized = b"\x00" * 65537
     with pytest.raises(ValueError):
         decode_control(oversized)
 
 
 def test_decode_control_max_size_ok() -> None:
-    """Normal CBOR messages well under 65536 bytes must not raise."""
     msg = {"type": "PING", "ts": 0.0}
     payload = cbor2.dumps(msg)
     assert len(payload) < 65536
@@ -207,14 +205,12 @@ def test_decode_control_max_size_ok() -> None:
 
 
 def test_frame_decoder_buffer_overflow_raises() -> None:
-    """Feeding more than 131072 bytes in one call must raise ValueError."""
     dec = FrameDecoder()
     with pytest.raises(ValueError):
         dec.feed(b"\x00" * 131073)
 
 
 def test_frame_decoder_buffer_overflow_split_raises() -> None:
-    """Cumulative overflow across two feeds must also raise ValueError."""
     import struct as _struct
 
     dec = FrameDecoder()
@@ -228,20 +224,60 @@ def test_frame_decoder_buffer_overflow_split_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
-# TokenStore constant-time validation
+# DatabaseStore constant-time validation
 # ---------------------------------------------------------------------------
 
 
 def test_token_store_constant_time_wrong_token() -> None:
-    """A wrong token must return None (constant-time comparison rejects it)."""
     token_store = _make_token_store()
     result = token_store.validate(b"\xff" * 16)
     assert result is None
 
 
 def test_token_store_correct_token_returns_config() -> None:
-    """The correct vehicle token (b'\\x00' * 16) must return a TokenConfig with role='vehicle'."""
     token_store = _make_token_store()
     result = token_store.validate(b"\x00" * 16)
     assert result is not None
     assert result.role == "vehicle"
+
+
+# ---------------------------------------------------------------------------
+# ACL tests — GCS subscribe authorisation
+# ---------------------------------------------------------------------------
+
+
+def test_subscribe_acl_rejects_wrong_vehicle() -> None:
+    registry = SessionRegistry()
+    proto = _make_proto()
+    proto._role = "gcs"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
+
+    handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_999999"}, registry)
+
+    proto._send_control.assert_called_once()
+    proto.transmit.assert_called_once()
+    msg = _decode_framed_control(proto._send_control.call_args.args[0])
+    assert msg["type"] == "SUB_FAIL"
+    assert msg["reason"] == "not authorised for this vehicle"
+    assert msg["vehicle_id"] == "BB_999999"
+
+
+@pytest.mark.asyncio
+async def test_subscribe_acl_allows_provisioned_vehicle(
+    registry: SessionRegistry,
+) -> None:
+    proto = _make_proto()
+    proto._role = "gcs"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
+
+    await registry.register_vehicle(
+        "BB_000001", MagicMock(name="vehicle-proto"), (0, 4, 8)
+    )
+    await registry.register_gcs("GCS_000001", proto, (0, 4, 8))
+
+    handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_000001"}, registry)
+
+    msg = _decode_framed_control(proto._send_control.call_args.args[0])
+    assert msg == {"type": "SUB_OK", "vehicle_id": "BB_000001"}

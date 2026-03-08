@@ -36,8 +36,10 @@ FC / MAVROS  →  [Jetson C++ ROS node]  →  QUIC/TLS  →  [Python Server]
 | Wire framing | `[u16_le length][raw bytes]` on all streams |
 | Streams | control=0, priority=4, bulk=8 |
 | Auth | Post-handshake token exchange (CBOR on stream 0), no client TLS certs required |
-| Vehicle ID | String in `BB_NNNNNN` format (e.g. `BB_000001`) — matched against server `auth.tokens[].vehicle_id` |
-| GCS subscription | One vehicle per GCS connection; re-subscribe rejected with `SUB_FAIL "already subscribed"` |
+| Vehicle ID | String in `BB_NNNNNN` format (e.g. `BB_000001`) |
+| GCS ID | String in `GCS_NNNNNN` format (e.g. `GCS_000001`) — each GCS token is authorized for exactly one matching vehicle |
+| GCS subscription | One vehicle per GCS connection; unauthorized or duplicate subscribes rejected with `SUB_FAIL` |
+| Configuration | SQLite database (stdlib `sqlite3`); swappable `ConfigBackend` protocol; managed with `manage.py` |
 | Server language | Python 3.12+, aioquic 1.3.0 |
 | Client language | C++ (ROS 1, msquic) |
 

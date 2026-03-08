@@ -1,17 +1,25 @@
 FROM python:3.12-slim
 
+ARG UID=1000
+ARG GID=1000
+
 WORKDIR /app
 
-# Copy pyproject.toml, README and source for layer caching
 COPY pyproject.toml .
 COPY README.md .
 COPY mavlink_relay_server/ ./mavlink_relay_server/
+COPY schema.sql .
+COPY manage.py .
+COPY docker-entrypoint.sh /entrypoint.sh
 
-# Install package without cache
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . && chmod +x /entrypoint.sh
 
-# Expose UDP port for QUIC
+RUN groupadd -r -g "${GID}" relay \
+    && useradd -r -u "${UID}" -g relay relay \
+    && mkdir -p /data && chown relay:relay /data
+
+USER relay
+
 EXPOSE 14550/udp
 
-# Default command with config file
-CMD ["mavlink-relay-server", "--config", "/config/config.yaml"]
+ENTRYPOINT ["/entrypoint.sh"]

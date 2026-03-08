@@ -7,45 +7,6 @@ import asyncio
 import logging
 import sys
 
-from mavlink_relay_server.config import ServerConfig, load_config
-
-
-def _build_config(args: argparse.Namespace) -> ServerConfig:
-    """Construct a :class:`~mavlink_relay_server.config.ServerConfig` from CLI args.
-
-    Exits with a helpful error if required TLS paths are missing.
-
-    Args:
-        args: Parsed :class:`argparse.Namespace` from the CLI parser.
-
-    Returns:
-        A :class:`~mavlink_relay_server.config.ServerConfig` populated from CLI flags.
-    """
-    # If a config file is provided, load from YAML and allow CLI overrides.
-    if args.config:
-        cli_overrides: dict[str, object] = {"host": args.host, "port": args.port}
-        if args.cert:
-            cli_overrides["cert"] = args.cert
-        if args.key:
-            cli_overrides["key"] = args.key
-        if args.log_level:
-            cli_overrides["log_level"] = args.log_level
-        return load_config(args.config, cli_overrides)
-
-    # No config file: cert and key are required via CLI
-    if not args.cert:
-        sys.exit("error: --cert is required (path to TLS certificate)")
-    if not args.key:
-        sys.exit("error: --key is required (path to TLS private key)")
-
-    return ServerConfig(
-        host=args.host,
-        port=args.port,
-        cert_path=args.cert,
-        key_path=args.key,
-        auth_timeout_s=args.auth_timeout,
-    )
-
 
 def main() -> None:
     """Parse CLI arguments and launch the async relay server.
@@ -57,55 +18,101 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="mavlink-relay-server", description="MAVLink QUIC Relay Server"
     )
-    parser.add_argument("--config", help="Path to YAML configuration file")
-    parser.add_argument("--cert", help="Path to TLS certificate (required)")
-    parser.add_argument("--key", help="Path to TLS private key (required)")
     parser.add_argument(
-        "--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)"
+        "--db",
+        required=True,
+        metavar="PATH",
+        help="Path to the SQLite relay database (created by manage.py init-db)",
     )
     parser.add_argument(
-        "--port", type=int, default=14550, help="Server port (default: 14550)"
+        "--cert",
+        metavar="PATH",
+        help="Path to TLS certificate (overrides DB server_config.cert_path)",
+    )
+    parser.add_argument(
+        "--key",
+        metavar="PATH",
+        help="Path to TLS private key (overrides DB server_config.key_path)",
+    )
+    parser.add_argument(
+        "--host",
+        default=None,
+        help="Server host (overrides DB server_config.host)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Server port (overrides DB server_config.port)",
     )
     parser.add_argument(
         "--auth-timeout",
         type=float,
-        default=30.0,
+        default=None,
         metavar="SECONDS",
-        help="Seconds before unauthenticated connections are closed (default: 30)",
+        help="Auth timeout in seconds (overrides DB server_config.auth_timeout_s)",
     )
     parser.add_argument(
-        "--log-level", default="INFO", help="Logging level (default: INFO)"
+        "--log-level",
+        default=None,
+        help="Logging level (overrides DB server_config.log_level)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Load config, print summary, and exit",
+        help="Load config and token store, print summary, then exit",
     )
 
     args = parser.parse_args()
 
-    # Configure logging
-    logging.basicConfig(
-        level=getattr(logging, args.log_level.upper(), logging.INFO),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
+    # Build CLI overrides dict — only include keys the user actually specified.
+    cli_overrides: dict[str, object] = {}
+    if args.host is not None:
+        cli_overrides["host"] = args.host
+    if args.port is not None:
+        cli_overrides["port"] = args.port
+    if args.cert:
+        cli_overrides["cert"] = args.cert
+    if args.key:
+        cli_overrides["key"] = args.key
+    if args.log_level:
+        cli_overrides["log_level"] = args.log_level
+    if args.auth_timeout is not None:
+        cli_overrides["auth_timeout"] = args.auth_timeout
 
-    logger = logging.getLogger(__name__)
-    logger.info("Starting MAVLink QUIC Relay Server...")
+    async def _run() -> None:
+        from mavlink_relay_server.backends import TursoBackend  # noqa: PLC0415
+        from mavlink_relay_server.config import load_config  # noqa: PLC0415
+        from mavlink_relay_server.server import run_server  # noqa: PLC0415
 
-    from mavlink_relay_server.server import run_server  # noqa: PLC0415
+        backend = TursoBackend(args.db)
 
-    config = _build_config(args)
+        try:
+            config, db_store = await load_config(backend, cli_overrides)
+        except FileNotFoundError as exc:
+            sys.exit(f"error: database not found — {exc}")
+        except ValueError as exc:
+            sys.exit(f"error: invalid configuration — {exc}")
 
-    if args.dry_run:
-        print(
-            f"Config OK: host={config.host} port={config.port} "
-            f"tokens={len(config.tokens)}"
+        # Configure logging (use level from config, which already merged overrides).
+        logging.basicConfig(
+            level=getattr(logging, config.log_level.upper(), logging.INFO),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
-        sys.exit(0)
+        logger = logging.getLogger(__name__)
+        logger.info("Starting MAVLink QUIC Relay Server…")
+
+        if args.dry_run:
+            token_count = len(db_store._lookup)
+            print(
+                f"Config OK: host={config.host} port={config.port} tokens={token_count}"
+            )
+            return
+
+        await run_server(config, backend)
 
     try:
-        asyncio.run(run_server(config))
+        asyncio.run(_run())
     except KeyboardInterrupt:
         pass
 

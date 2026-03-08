@@ -8,9 +8,17 @@ services:
       - relay-test-net
     volumes:
       - ./certs:/certs:ro
-      - ./tests/integration/config.test.yaml:/config/config.yaml:ro
     environment:
+      - RELAY_DB=/data/relay.db
+      - RELAY_CERT_PATH=/certs/cert.pem
+      - RELAY_KEY_PATH=/certs/key.pem
       - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+      - VEHICLE_TOKEN=AAAAAAAAAAAAAAAAAAAAAA==
+      - VEHICLE_ID=BB_000001
+      - GCS_TOKEN=u7u7u7u7u7u7u7u7u7u7uw==
+      - GCS_ID=GCS_000001
+      - GCS_ALLOWED_VEHICLE=BB_000001
 
   test-client:
     build:

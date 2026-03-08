@@ -37,7 +37,7 @@ from mavlink_relay_server.control import (
 from mavlink_relay_server.framing import FrameDecoder, encode_frame
 
 if TYPE_CHECKING:
-    from mavlink_relay_server.config import ServerConfig, TokenStore
+    from mavlink_relay_server.config import ConfigBackend, DatabaseStore, ServerConfig
     from mavlink_relay_server.registry import SessionRegistry
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class RelayProtocol(QuicConnectionProtocol):
         *args: object,
         registry: SessionRegistry,
         server_config: ServerConfig,
-        token_store: TokenStore,
+        token_backend: ConfigBackend,
         **kwargs: object,
     ) -> None:
         """Initialise connection state and store injected dependencies."""
@@ -77,11 +77,14 @@ class RelayProtocol(QuicConnectionProtocol):
 
         self._registry: SessionRegistry = registry
         self._config: ServerConfig = server_config
-        self._token_store: TokenStore = token_store
+        self._token_backend: ConfigBackend = token_backend
+        self._token_store: DatabaseStore | None = None
 
         self._authed: bool = False
         self._role: str | None = None
         self._session_id: str | None = None
+        # Set at AUTH time for GCS connections: the vehicle this GCS may reach.
+        self._allowed_vehicle_id: str | None = None
         self._stream_buffers: dict[int, FrameDecoder] = {}
         self._auth_timeout_handle: asyncio.TimerHandle | None = None
 
@@ -150,6 +153,17 @@ class RelayProtocol(QuicConnectionProtocol):
 
         self._bulk_out_queue = asyncio.Queue(maxsize=self._config.bulk_queue_max)
         self._bulk_sender_task = asyncio.ensure_future(self._bulk_sender())
+        asyncio.ensure_future(self._load_token_store())
+
+    async def _load_token_store(self) -> None:
+        from mavlink_relay_server.config import load_tokens  # noqa: PLC0415
+
+        try:
+            self._token_store = await load_tokens(self._token_backend)
+        except Exception as exc:
+            logger.error("Failed to load token store: %s", exc)
+            self._quic.close(error_code=0x02, reason_phrase="internal error")
+            self.transmit()
 
     def _on_stream_data_received(self, event: StreamDataReceived) -> None:
         """Route incoming stream data to the correct channel handler.
@@ -271,7 +285,11 @@ class RelayProtocol(QuicConnectionProtocol):
                 ping_msg: dict[str, Any] = {"type": "PING", "ts": time.time()}
                 self._send_control(encode_control(ping_msg))
                 self.transmit()
-                logger.info("Sent PING to %s (elapsed since last PONG: %.1fs)", self._session_id, elapsed)
+                logger.info(
+                    "Sent PING to %s (elapsed since last PONG: %.1fs)",
+                    self._session_id,
+                    elapsed,
+                )
                 if elapsed > self._config.keepalive_timeout_s:
                     logger.warning(
                         "Keepalive timeout for %s (%.1fs since last PONG)",
@@ -346,6 +364,11 @@ class RelayProtocol(QuicConnectionProtocol):
             logger.info("Control message from %s: type=%r", self._session_id, msg_type)
             match msg_type:
                 case "AUTH":
+                    if self._token_store is None:
+                        logger.warning(
+                            "AUTH received before token store loaded — dropping"
+                        )
+                        return
                     handle_auth(self, msg, self._registry, self._token_store)
                 case "SUBSCRIBE":
                     handle_subscribe(self, msg, self._registry)
@@ -387,7 +410,9 @@ class RelayProtocol(QuicConnectionProtocol):
                     self._session_id,
                     len(pending),
                 )
-                asyncio.ensure_future(self._flush_pending_vehicle_frames(stream_id, pending))
+                asyncio.ensure_future(
+                    self._flush_pending_vehicle_frames(stream_id, pending)
+                )
 
         decoder = self._get_or_create_decoder(stream_id)
         try:
@@ -448,7 +473,9 @@ class RelayProtocol(QuicConnectionProtocol):
                     # "Cannot send data on unknown peer-initiated stream".
                     # Buffer the frames; they will be flushed when the vehicle
                     # activates the stream by sending its first MAVLink frame.
-                    pending = vehicle_proto._pending_vehicle_frames.setdefault(stream_id, [])
+                    pending = vehicle_proto._pending_vehicle_frames.setdefault(
+                        stream_id, []
+                    )
                     pending.extend(frames)
                     logger.debug(
                         "GCS '%s' → vehicle '%s': stream %d not yet active, buffered %d frame(s) (%d total pending)",
@@ -473,7 +500,9 @@ class RelayProtocol(QuicConnectionProtocol):
                         return
                 vehicle_proto.transmit()
 
-    async def _flush_pending_vehicle_frames(self, stream_id: int, frames: list[bytes]) -> None:
+    async def _flush_pending_vehicle_frames(
+        self, stream_id: int, frames: list[bytes]
+    ) -> None:
         """Send buffered GCS→vehicle frames after a vehicle stream becomes active.
 
         Called when *stream_id* receives its first data from the vehicle,

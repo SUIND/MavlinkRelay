@@ -31,7 +31,7 @@ VEHICLE_ID = "BB_000001"
 # Client-initiated bidirectional: 0 (control), 4 (priority out), 8 (bulk out)
 # Server-initiated bidirectional: 1 (priority in from server), 5 (bulk in from server)
 CONTROL_STREAM_ID = 0
-PRIORITY_STREAM_ID = 4        # used by vehicle to send MAVLink frames
+PRIORITY_STREAM_ID = 4  # used by vehicle to send MAVLink frames
 SERVER_PRIORITY_STREAM_ID = 1  # used by server to push frames to GCS
 
 
@@ -162,7 +162,7 @@ class GCSClient(QuicConnectionProtocol):
         self.transmit()
         print("[gcs] AUTH sent")
 
-    async def subscribe_and_wait(self, vehicle_id: int, timeout: float = 10.0):
+    async def subscribe_and_wait(self, vehicle_id: str, timeout: float = 10.0):
         """Wait for auth, send SUBSCRIBE, wait for SUB_OK."""
         await asyncio.wait_for(self.authed.wait(), timeout=timeout)
         sub_msg = make_cbor_frame({"type": "SUBSCRIBE", "vehicle_id": vehicle_id})

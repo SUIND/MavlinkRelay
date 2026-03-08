@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import cbor2
 import pytest
 
-from mavlink_relay_server.config import TokenConfig, TokenStore
+from mavlink_relay_server.config import DatabaseStore, TokenConfig
 from mavlink_relay_server.control import (
     decode_control,
     encode_control,
@@ -35,6 +35,7 @@ def _make_proto() -> MagicMock:
     proto._authed = False
     proto._role = None
     proto._session_id = None
+    proto._allowed_vehicle_id = None
     proto._auth_timeout_handle = MagicMock()
     proto._quic = MagicMock()
     return proto
@@ -43,16 +44,24 @@ def _make_proto() -> MagicMock:
 def _make_token_store(
     vehicle_token: bytes = b"\x00" * 16,
     gcs_token: bytes = b"\xbb" * 16,
-) -> TokenStore:
+) -> DatabaseStore:
     vehicle_b64 = base64.b64encode(vehicle_token).decode("ascii")
     gcs_b64 = base64.b64encode(gcs_token).decode("ascii")
     tokens = [
         TokenConfig(
-            token_b64=vehicle_b64, role="vehicle", vehicle_id="BB_000001", gcs_id=None
+            token_b64=vehicle_b64,
+            role="vehicle",
+            identity="BB_000001",
+            allowed_vehicle_id=None,
         ),
-        TokenConfig(token_b64=gcs_b64, role="gcs", vehicle_id=None, gcs_id="gcs-alpha"),
+        TokenConfig(
+            token_b64=gcs_b64,
+            role="gcs",
+            identity="GCS_000001",
+            allowed_vehicle_id="BB_000001",
+        ),
     ]
-    return TokenStore(tokens)
+    return DatabaseStore(tokens)
 
 
 def test_encode_decode_all_control_message_types() -> None:
@@ -81,7 +90,10 @@ async def test_handle_auth_vehicle_registers_in_registry() -> None:
     proto = _make_proto()
 
     ok = handle_auth(
-        proto, {"type": "AUTH", "token": b"\x00" * 16}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": b"\x00" * 16, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok is True
     await asyncio.sleep(0)
@@ -96,11 +108,14 @@ async def test_handle_auth_gcs_registers_in_registry() -> None:
     proto = _make_proto()
 
     ok = handle_auth(
-        proto, {"type": "AUTH", "token": b"\xbb" * 16}, registry, token_store
+        proto,
+        {"type": "AUTH", "token": b"\xbb" * 16, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
     )
     assert ok is True
     await asyncio.sleep(0)
-    g = registry.get_gcs("gcs-alpha")
+    g = registry.get_gcs("GCS_000001")
     assert g is not None
     assert g.protocol is proto
 
@@ -111,20 +126,28 @@ async def test_full_auth_and_subscribe_flow() -> None:
     v_proto = _make_proto()
     g_proto = _make_proto()
 
-    handle_auth(v_proto, {"type": "AUTH", "token": b"\x00" * 16}, registry, token_store)
+    handle_auth(
+        v_proto,
+        {"type": "AUTH", "token": b"\x00" * 16, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
+    )
     await asyncio.sleep(0)
 
-    handle_auth(g_proto, {"type": "AUTH", "token": b"\xbb" * 16}, registry, token_store)
+    handle_auth(
+        g_proto,
+        {"type": "AUTH", "token": b"\xbb" * 16, "vehicle_id": "BB_000001"},
+        registry,
+        token_store,
+    )
     await asyncio.sleep(0)
 
-    g_proto._role = "gcs"
-    g_proto._session_id = "gcs-alpha"
     handle_subscribe(
         g_proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_000001"}, registry
     )
     await asyncio.sleep(0)
 
-    gcs_session = registry.get_gcs("gcs-alpha")
+    gcs_session = registry.get_gcs("GCS_000001")
     assert gcs_session is not None
     assert gcs_session.subscribed_vehicle_id == "BB_000001"
 

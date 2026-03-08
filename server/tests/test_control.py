@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import cbor2
 import pytest
 
-from mavlink_relay_server.config import TokenStore
+from mavlink_relay_server.config import DatabaseStore
 from mavlink_relay_server.control import (
     decode_control,
     encode_control,
@@ -34,6 +34,7 @@ def _make_proto() -> MagicMock:
     proto._authed = False
     proto._role = None
     proto._session_id = None
+    proto._allowed_vehicle_id = None
     proto._auth_timeout_handle = MagicMock()
     proto._quic = MagicMock()
     return proto
@@ -58,7 +59,7 @@ def test_encode_control_and_decode_control_roundtrip() -> None:
 @pytest.mark.asyncio
 async def test_handle_auth_valid_vehicle_token_sets_state_and_sends_auth_ok(
     registry: SessionRegistry,
-    token_store: TokenStore,
+    token_store: DatabaseStore,
     vehicle_token_bytes: bytes,
 ) -> None:
     proto = _make_proto()
@@ -66,7 +67,7 @@ async def test_handle_auth_valid_vehicle_token_sets_state_and_sends_auth_ok(
 
     ok = handle_auth(
         proto,
-        {"type": "AUTH", "token": vehicle_token_bytes},
+        {"type": "AUTH", "token": vehicle_token_bytes, "vehicle_id": "BB_000001"},
         registry,
         token_store,
     )
@@ -93,7 +94,7 @@ async def test_handle_auth_valid_vehicle_token_sets_state_and_sends_auth_ok(
 @pytest.mark.asyncio
 async def test_handle_auth_valid_gcs_token_sets_state_and_sends_auth_ok(
     registry: SessionRegistry,
-    token_store: TokenStore,
+    token_store: DatabaseStore,
     gcs_token_bytes: bytes,
 ) -> None:
     proto = _make_proto()
@@ -101,14 +102,14 @@ async def test_handle_auth_valid_gcs_token_sets_state_and_sends_auth_ok(
 
     ok = handle_auth(
         proto,
-        {"type": "AUTH", "token": gcs_token_bytes},
+        {"type": "AUTH", "token": gcs_token_bytes, "vehicle_id": "BB_000001"},
         registry,
         token_store,
     )
     assert ok is True
     assert proto._authed is True
     assert proto._role == "gcs"
-    assert proto._session_id == "gcs-alpha"
+    assert proto._session_id == "GCS_000001"
     assert proto._auth_timeout_handle is None
     timeout_handle.cancel.assert_called_once()
     proto._start_keepalive.assert_called_once()
@@ -117,7 +118,7 @@ async def test_handle_auth_valid_gcs_token_sets_state_and_sends_auth_ok(
     assert msg == {"type": "AUTH_OK"}
 
     await asyncio.sleep(0)
-    g = registry.get_gcs("gcs-alpha")
+    g = registry.get_gcs("GCS_000001")
     assert g is not None
     assert g.protocol is proto
 
@@ -125,7 +126,7 @@ async def test_handle_auth_valid_gcs_token_sets_state_and_sends_auth_ok(
 @pytest.mark.asyncio
 async def test_handle_auth_invalid_token_returns_false_and_sends_auth_fail(
     registry: SessionRegistry,
-    token_store: TokenStore,
+    token_store: DatabaseStore,
 ) -> None:
     proto = _make_proto()
     ok = handle_auth(
@@ -145,7 +146,7 @@ async def test_handle_auth_invalid_token_returns_false_and_sends_auth_fail(
 @pytest.mark.asyncio
 async def test_handle_auth_non_bytes_token_returns_false(
     registry: SessionRegistry,
-    token_store: TokenStore,
+    token_store: DatabaseStore,
 ) -> None:
     proto = _make_proto()
     ok = handle_auth(proto, {"type": "AUTH", "token": "nope"}, registry, token_store)
@@ -171,10 +172,25 @@ def test_handle_subscribe_gcs_invalid_vehicle_id_field_is_noop(
 ) -> None:
     proto = _make_proto()
     proto._role = "gcs"
-    proto._session_id = "gcs-alpha"
+    proto._session_id = "GCS_000001"
     handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": 1}, registry)
     proto._send_control.assert_not_called()
     proto.transmit.assert_not_called()
+
+
+def test_handle_subscribe_gcs_unauthorised_vehicle_sends_sub_fail(
+    registry: SessionRegistry,
+) -> None:
+    proto = _make_proto()
+    proto._role = "gcs"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
+    handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_999999"}, registry)
+    proto._send_control.assert_called_once()
+    proto.transmit.assert_called_once()
+    msg = _decode_framed_control(proto._send_control.call_args.args[0])
+    assert msg["type"] == "SUB_FAIL"
+    assert msg["reason"] == "not authorised for this vehicle"
 
 
 def test_handle_subscribe_gcs_vehicle_not_found_sends_sub_fail(
@@ -182,7 +198,8 @@ def test_handle_subscribe_gcs_vehicle_not_found_sends_sub_fail(
 ) -> None:
     proto = _make_proto()
     proto._role = "gcs"
-    proto._session_id = "gcs-alpha"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
     handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_000001"}, registry)
     proto._send_control.assert_called_once()
     proto.transmit.assert_called_once()
@@ -197,12 +214,13 @@ async def test_handle_subscribe_gcs_vehicle_found_sends_sub_ok_and_subscribes(
 ) -> None:
     proto = _make_proto()
     proto._role = "gcs"
-    proto._session_id = "gcs-alpha"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
 
     await registry.register_vehicle(
         "BB_000001", MagicMock(name="vehicle-proto"), (0, 4, 8)
     )
-    await registry.register_gcs("gcs-alpha", proto, (0, 4, 8))
+    await registry.register_gcs("GCS_000001", proto, (0, 4, 8))
 
     handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_000001"}, registry)
     proto._send_control.assert_called_once()
@@ -211,7 +229,7 @@ async def test_handle_subscribe_gcs_vehicle_found_sends_sub_ok_and_subscribes(
     assert msg == {"type": "SUB_OK", "vehicle_id": "BB_000001"}
 
     await asyncio.sleep(0)
-    gcs = registry.get_gcs("gcs-alpha")
+    gcs = registry.get_gcs("GCS_000001")
     assert gcs is not None
     assert gcs.subscribed_vehicle_id == "BB_000001"
 
@@ -231,12 +249,13 @@ async def test_handle_subscribe_already_subscribed_gcs_sends_sub_fail(
 ) -> None:
     proto = _make_proto()
     proto._role = "gcs"
-    proto._session_id = "gcs-alpha"
+    proto._session_id = "GCS_000001"
+    proto._allowed_vehicle_id = "BB_000001"
 
     await registry.register_vehicle(
         "BB_000001", MagicMock(name="vehicle-proto"), (0, 4, 8)
     )
-    await registry.register_gcs("gcs-alpha", proto, (0, 4, 8))
+    await registry.register_gcs("GCS_000001", proto, (0, 4, 8))
 
     handle_subscribe(proto, {"type": "SUBSCRIBE", "vehicle_id": "BB_000001"}, registry)
     await asyncio.sleep(0)
