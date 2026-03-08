@@ -1,6 +1,7 @@
 #include "mavlink_quic_relay/priority_classifier.h"
 
-namespace mavlink_quic_relay {
+namespace mavlink_quic_relay
+{
 
 PriorityClassifier::PriorityClassifier()
     : priority_ids_({
@@ -22,17 +23,20 @@ PriorityClassifier::PriorityClassifier()
           77,   // COMMAND_ACK
           111,  // TIMESYNC
           253,  // STATUSTEXT
-      }) {}
+      })
+{
+}
 
 PriorityClassifier::PriorityClassifier(std::unordered_set<uint32_t> priority_ids)
-    : priority_ids_(std::move(priority_ids)) {}
-
-StreamType PriorityClassifier::classify(uint32_t msgid) const noexcept {
-    return priority_ids_.count(msgid) > 0 ? StreamType::PRIORITY : StreamType::BULK;
+    : priority_ids_(std::move(priority_ids))
+{
 }
 
-const std::unordered_set<uint32_t>& PriorityClassifier::priorityIds() const noexcept {
-    return priority_ids_;
+StreamType PriorityClassifier::classify(uint32_t msgid) const noexcept
+{
+  return priority_ids_.count(msgid) > 0 ? StreamType::PRIORITY : StreamType::BULK;
 }
+
+const std::unordered_set<uint32_t>& PriorityClassifier::priorityIds() const noexcept { return priority_ids_; }
 
 }  // namespace mavlink_quic_relay
