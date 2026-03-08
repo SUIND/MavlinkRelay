@@ -687,7 +687,7 @@ static std::vector<uint8_t> cborBuildPong(double ts)
 
 void QuicClient::handleControlFrame(const std::vector<uint8_t>& frame)
 {
-  ROS_INFO("handleControlFrame: %zu bytes", frame.size());
+  ROS_DEBUG("handleControlFrame: %zu bytes", frame.size());
   const std::string msg_type = cborGetStringField(frame, "type");
 
   if (msg_type == "AUTH_OK")
@@ -709,7 +709,7 @@ void QuicClient::handleControlFrame(const std::vector<uint8_t>& frame)
   else if (msg_type == "PING")
   {
     const double ts = cborGetFloat64Field(frame, "ts");
-    ROS_INFO("PING received (ts=%.3f) — queuing PONG", ts);
+    ROS_DEBUG("PING received (ts=%.3f) — queuing PONG", ts);
     InternalEvent ev{};
     ev.type  = InternalEvent::Type::SEND_PONG;
     ev.frame = cborBuildPong(ts);
@@ -912,17 +912,17 @@ bool QuicClient::sendBulkFrame(const std::vector<uint8_t>& payload)
 
 void QuicClient::processEvents()
 {
-  ROS_INFO_THROTTLE(5.0, "processEvents() heartbeat (thread 0x%lx)",
-                    static_cast<unsigned long>(pthread_self()));
+  ROS_DEBUG_THROTTLE(5.0, "processEvents() heartbeat (thread 0x%lx)",
+                     static_cast<unsigned long>(pthread_self()));
   std::queue<InternalEvent> local;
   {
     std::lock_guard<std::mutex> lk(event_queue_mutex_);
     std::swap(local, event_queue_);
   }
-  ROS_INFO_THROTTLE(1.0, "processEvents: queue swap done, local.size=%zu", local.size());
+  ROS_DEBUG_THROTTLE(1.0, "processEvents: queue swap done, local.size=%zu", local.size());
   if (!local.empty())
   {
-    ROS_INFO("processEvents: draining %zu events", local.size());
+    ROS_DEBUG("processEvents: draining %zu events", local.size());
   }
 
   // Snapshot callbacks without holding event_queue_mutex_.
@@ -967,14 +967,14 @@ void QuicClient::processEvents()
         }
         break;
       case InternalEvent::Type::SEND_PONG:
-        ROS_INFO("Sending PONG (%zu bytes payload)", ev.frame.size());
+        ROS_DEBUG("Sending PONG (%zu bytes payload)", ev.frame.size());
         if (!sendControlFrame(ev.frame))
         {
           ROS_WARN("PONG send failed");
         }
         else
         {
-          ROS_INFO("PONG sent successfully");
+          ROS_DEBUG("PONG sent successfully");
         }
         break;
     }
@@ -987,11 +987,11 @@ void QuicClient::processEvents()
 
 void QuicClient::postEvent(InternalEvent event)
 {
-  ROS_INFO("postEvent: type=%d (thread 0x%lx)",
-           static_cast<int>(event.type), static_cast<unsigned long>(pthread_self()));
+  ROS_DEBUG("postEvent: type=%d (thread 0x%lx)",
+            static_cast<int>(event.type), static_cast<unsigned long>(pthread_self()));
   std::lock_guard<std::mutex> lk(event_queue_mutex_);
   event_queue_.push(std::move(event));
-  ROS_INFO("postEvent: pushed, queue size now=%zu", event_queue_.size());
+  ROS_DEBUG("postEvent: pushed, queue size now=%zu", event_queue_.size());
 }
 
 // ── shutdown
@@ -1184,9 +1184,9 @@ void QuicClient::onStreamEvent(HQUIC stream, QUIC_STREAM_EVENT* event, int strea
       // Collect all data from the scattered QUIC_BUFFER array
       const uint32_t buf_count = event->RECEIVE.BufferCount;
       const QUIC_BUFFER* bufs = event->RECEIVE.Buffers;
-      ROS_INFO("Stream %d RECEIVE event: %u buffers, total=%llu bytes",
-               stream_index, buf_count,
-               static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
+      ROS_DEBUG("Stream %d RECEIVE event: %u buffers, total=%llu bytes",
+                stream_index, buf_count,
+                static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
 
       std::vector<std::vector<uint8_t>> frames;
 
@@ -1214,9 +1214,9 @@ void QuicClient::onStreamEvent(HQUIC stream, QUIC_STREAM_EVENT* event, int strea
         }
       }
 
-      ROS_INFO("Stream %d decoded %zu frames from %llu bytes",
-               stream_index, frames.size(),
-               static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
+      ROS_DEBUG("Stream %d decoded %zu frames from %llu bytes",
+                stream_index, frames.size(),
+                static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
 
       for (auto& frame : frames)
       {
