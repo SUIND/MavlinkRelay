@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <pthread.h>
 
 namespace mavlink_quic_relay
 {
@@ -172,11 +173,72 @@ bool QuicClient::initMsquic()
   return true;
 }
 
+// ── resetForReconnect
+// ─────────────────────────────────────────────────────────
+
+void QuicClient::resetForReconnect()
+{
+  // Stop the event thread first so it no longer reads shared state.
+  stop_event_thread_.store(true);
+  if (event_thread_.joinable())
+  {
+    event_thread_.join();
+  }
+  stop_event_thread_.store(false);
+
+  // If there is a live connection, ask msquic to shut it down and wait for
+  // SHUTDOWN_COMPLETE so that all callbacks have fired before we free handles.
+  if (connection_ && msquic_)
+  {
+    shutdown_complete_ = false;
+    msquic_->ConnectionShutdown(connection_, QUIC_CONNECTION_SHUTDOWN_FLAG_NONE, 0);
+    std::unique_lock<std::mutex> lk(shutdown_mutex_);
+    shutdown_cv_.wait_for(lk, std::chrono::seconds(5), [this] { return shutdown_complete_; });
+  }
+
+  closeAllHandles();
+
+  // Reset all per-connection state flags so connect() starts clean.
+  connected_.store(false);
+  auth_ok_.store(false);
+  shutdown_requested_.store(false);
+  shutdown_complete_ = false;
+
+  // Discard any stale events from the previous connection.
+  {
+    std::lock_guard<std::mutex> lk(event_queue_mutex_);
+    std::queue<InternalEvent> empty;
+    std::swap(event_queue_, empty);
+  }
+
+  // Discard any pending send buffers.
+  {
+    std::lock_guard<std::mutex> lk(pending_sends_mutex_);
+    std::queue<std::unique_ptr<SendBuffer>> empty;
+    std::swap(pending_sends_, empty);
+  }
+
+  // Reset per-stream receive decoders.
+  recv_state_control_  = StreamRecvState{};
+  recv_state_priority_ = StreamRecvState{};
+  recv_state_bulk_     = StreamRecvState{};
+}
+
 // ── connect
 // ───────────────────────────────────────────────────────────────────
 
 bool QuicClient::connect()
 {
+  // If we are being called for a reconnect (e.g. by ReconnectManager after a
+  // dropped connection) there may be a live event thread and/or dangling msquic
+  // handles from the previous attempt.  Tear everything down cleanly before
+  // starting fresh — this prevents the std::terminate() that occurs when an
+  // assignment to a joinable std::thread is attempted.
+  if (event_thread_.joinable() || connection_ || msquic_)
+  {
+    resetForReconnect();
+  }
+
   if (!initMsquic())
   {
     return false;
@@ -200,6 +262,18 @@ bool QuicClient::connect()
   }
 
   ROS_INFO_STREAM("QUIC ConnectionStart initiated to " << config_.server_host << ":" << config_.server_port);
+
+  stop_event_thread_.store(false);
+  event_thread_ = std::thread([this] {
+    ROS_INFO("QuicClient event thread started (thread 0x%lx)", static_cast<unsigned long>(pthread_self()));
+    while (!stop_event_thread_.load(std::memory_order_relaxed))
+    {
+      processEvents();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    ROS_INFO("QuicClient event thread exited");
+  });
+
   return true;
 }
 
@@ -613,6 +687,7 @@ static std::vector<uint8_t> cborBuildPong(double ts)
 
 void QuicClient::handleControlFrame(const std::vector<uint8_t>& frame)
 {
+  ROS_INFO("handleControlFrame: %zu bytes", frame.size());
   const std::string msg_type = cborGetStringField(frame, "type");
 
   if (msg_type == "AUTH_OK")
@@ -634,14 +709,11 @@ void QuicClient::handleControlFrame(const std::vector<uint8_t>& frame)
   else if (msg_type == "PING")
   {
     const double ts = cborGetFloat64Field(frame, "ts");
-    if (sendControlFrame(cborBuildPong(ts)))
-    {
-      ROS_DEBUG("PONG sent (ts=%.3f)", ts);
-    }
-    else
-    {
-      ROS_WARN("PONG send failed");
-    }
+    ROS_INFO("PING received (ts=%.3f) — queuing PONG", ts);
+    InternalEvent ev{};
+    ev.type  = InternalEvent::Type::SEND_PONG;
+    ev.frame = cborBuildPong(ts);
+    postEvent(std::move(ev));
   }
   else if (!msg_type.empty())
   {
@@ -840,24 +912,30 @@ bool QuicClient::sendBulkFrame(const std::vector<uint8_t>& payload)
 
 void QuicClient::processEvents()
 {
+  ROS_INFO_THROTTLE(5.0, "processEvents() heartbeat (thread 0x%lx)",
+                    static_cast<unsigned long>(pthread_self()));
   std::queue<InternalEvent> local;
   {
     std::lock_guard<std::mutex> lk(event_queue_mutex_);
     std::swap(local, event_queue_);
   }
-
-  // Capture callbacks under the lock to get consistent snapshot
-  FrameReceivedCallback frame_cb;
-  ConnectionStateCallback state_cb;
-  std::function<void()> auth_ok_cb;
-  std::function<void()> auth_fail_cb;
+  ROS_INFO_THROTTLE(1.0, "processEvents: queue swap done, local.size=%zu", local.size());
+  if (!local.empty())
   {
-    std::lock_guard<std::mutex> lk(event_queue_mutex_);
-    frame_cb = frame_cb_;
-    state_cb = state_cb_;
-    auth_ok_cb = auth_ok_cb_;
-    auth_fail_cb = auth_fail_cb_;
+    ROS_INFO("processEvents: draining %zu events", local.size());
   }
+
+  // Snapshot callbacks without holding event_queue_mutex_.
+  // Callbacks are written once at startup (before any events fire) and never
+  // changed afterwards, so reading them here without the lock is safe.
+  // IMPORTANT: do NOT hold event_queue_mutex_ while calling sendControlFrame /
+  // StreamSend below — doing so creates a deadlock:
+  //   msquic RECEIVE callback → postEvent (wants event_queue_mutex_)
+  //   this thread             → StreamSend (wants msquic stream lock, held by RECEIVE)
+  FrameReceivedCallback frame_cb  = frame_cb_;
+  ConnectionStateCallback state_cb = state_cb_;
+  std::function<void()> auth_ok_cb   = auth_ok_cb_;
+  std::function<void()> auth_fail_cb = auth_fail_cb_;
 
   while (!local.empty())
   {
@@ -888,6 +966,17 @@ void QuicClient::processEvents()
           auth_fail_cb();
         }
         break;
+      case InternalEvent::Type::SEND_PONG:
+        ROS_INFO("Sending PONG (%zu bytes payload)", ev.frame.size());
+        if (!sendControlFrame(ev.frame))
+        {
+          ROS_WARN("PONG send failed");
+        }
+        else
+        {
+          ROS_INFO("PONG sent successfully");
+        }
+        break;
     }
     local.pop();
   }
@@ -898,8 +987,11 @@ void QuicClient::processEvents()
 
 void QuicClient::postEvent(InternalEvent event)
 {
+  ROS_INFO("postEvent: type=%d (thread 0x%lx)",
+           static_cast<int>(event.type), static_cast<unsigned long>(pthread_self()));
   std::lock_guard<std::mutex> lk(event_queue_mutex_);
   event_queue_.push(std::move(event));
+  ROS_INFO("postEvent: pushed, queue size now=%zu", event_queue_.size());
 }
 
 // ── shutdown
@@ -908,6 +1000,12 @@ void QuicClient::postEvent(InternalEvent event)
 void QuicClient::shutdown()
 {
   shutdown_requested_.store(true);
+
+  stop_event_thread_.store(true);
+  if (event_thread_.joinable())
+  {
+    event_thread_.join();
+  }
 
   if (connection_)
   {
@@ -1086,6 +1184,9 @@ void QuicClient::onStreamEvent(HQUIC stream, QUIC_STREAM_EVENT* event, int strea
       // Collect all data from the scattered QUIC_BUFFER array
       const uint32_t buf_count = event->RECEIVE.BufferCount;
       const QUIC_BUFFER* bufs = event->RECEIVE.Buffers;
+      ROS_INFO("Stream %d RECEIVE event: %u buffers, total=%llu bytes",
+               stream_index, buf_count,
+               static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
 
       std::vector<std::vector<uint8_t>> frames;
 
@@ -1113,8 +1214,9 @@ void QuicClient::onStreamEvent(HQUIC stream, QUIC_STREAM_EVENT* event, int strea
         }
       }
 
-      // Tell msquic we consumed all bytes
-      msquic_->StreamReceiveComplete(stream, event->RECEIVE.TotalBufferLength);
+      ROS_INFO("Stream %d decoded %zu frames from %llu bytes",
+               stream_index, frames.size(),
+               static_cast<unsigned long long>(event->RECEIVE.TotalBufferLength));
 
       for (auto& frame : frames)
       {

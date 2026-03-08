@@ -55,17 +55,10 @@ class RelayNode
   std::thread sender_thread_;
   std::atomic<bool> running_{false};
 
-  // Timer to process QUIC events on ROS thread
-  ros::Timer quic_event_timer_;
   ros::NodeHandle& nh_;
 
   /// Sender thread loop: drains outbound queue, classifies, sends via QUIC.
   void senderLoop();
-
-  /// ROS timer callback (1 ms period): drains the msquic event queue via processEvents().
-  /// This is the ONLY place msquic events are dispatched to ROS — do not call
-  /// processEvents() from any other thread.
-  void quicEventCallback(const ros::TimerEvent& event);
 
   /// Called when QUIC connection state changes (connected=true) or drops (connected=false).
   /// Dispatched from the ROS timer thread via processEvents().

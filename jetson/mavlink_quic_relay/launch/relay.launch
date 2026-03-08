@@ -17,6 +17,11 @@
   <arg name="params_file"  default="$(find mavlink_quic_relay)/config/relay_params.yaml"
        doc="Path to YAML params file" />
 
+  <!-- This node uses wall clock time. Explicitly disable simulated time so
+       rospy timers and Rate.sleep() are not blocked when /use_sim_time is
+       set on the parameter server (e.g. after a rosbag session). -->
+  <param name="/use_sim_time" value="false" />
+
   <node name="mavlink_quic_relay"
         pkg="mavlink_quic_relay"
         type="mavlink_quic_relay_node"

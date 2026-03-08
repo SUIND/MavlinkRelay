@@ -22,8 +22,6 @@ RelayNode::RelayNode(ros::NodeHandle& nh, RelayNodeConfig config) : config_(std:
 
   quic_client_->setAuthOkCallback([this] { onAuthOk(); });
   quic_client_->setAuthFailCallback([this] { onAuthFailed(); });
-
-  quic_event_timer_ = nh_.createTimer(ros::Duration(0.001), &RelayNode::quicEventCallback, this);
 }
 
 RelayNode::~RelayNode() { stop(); }
@@ -57,7 +55,6 @@ void RelayNode::stop()
 
   running_.store(false, std::memory_order_relaxed);
 
-  quic_event_timer_.stop();
   reconnect_manager_->stop();
   quic_client_->shutdown();
 
@@ -115,8 +112,6 @@ void RelayNode::senderLoop()
 
   ROS_INFO("mavlink_quic_relay: sender thread exited");
 }
-
-void RelayNode::quicEventCallback(const ros::TimerEvent& /*event*/) { quic_client_->processEvents(); }
 
 void RelayNode::onConnectionStateChanged(bool connected)
 {

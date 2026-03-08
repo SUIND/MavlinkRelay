@@ -50,12 +50,27 @@ async def test_register_vehicle_duplicate_raises(registry: SessionRegistry) -> N
 
 
 @pytest.mark.asyncio
-async def test_register_gcs_duplicate_raises(registry: SessionRegistry) -> None:
+async def test_register_gcs_duplicate_replaces_session(
+    registry: SessionRegistry,
+) -> None:
     proto1 = MagicMock(name="gcs-proto1")
     proto2 = MagicMock(name="gcs-proto2")
     await registry.register_gcs("gcs-alpha", proto1, (0, 4, 8))
-    with pytest.raises(ValueError, match="already registered"):
-        await registry.register_gcs("gcs-alpha", proto2, (0, 4, 8))
+    session2 = await registry.register_gcs("gcs-alpha", proto2, (0, 4, 8))
+    assert session2.protocol is proto2
+    assert registry.get_gcs("gcs-alpha") is session2
+
+
+@pytest.mark.asyncio
+async def test_stale_unregister_gcs_does_not_evict_replacement(
+    registry: SessionRegistry,
+) -> None:
+    proto1 = MagicMock(name="gcs-proto1")
+    proto2 = MagicMock(name="gcs-proto2")
+    await registry.register_gcs("gcs-alpha", proto1, (0, 4, 8))
+    session2 = await registry.register_gcs("gcs-alpha", proto2, (0, 4, 8))
+    await registry.unregister_gcs("gcs-alpha", protocol=proto1)
+    assert registry.get_gcs("gcs-alpha") is session2
 
 
 @pytest.mark.asyncio

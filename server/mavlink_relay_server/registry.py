@@ -122,13 +122,32 @@ class SessionRegistry:
 
         Returns:
             The newly created GCSSession.
-
-        Raises:
-            ValueError: If gcs_id is already registered.
         """
         async with self._lock:
-            if gcs_id in self._gcs:
-                raise ValueError(f"GCS '{gcs_id}' already registered")
+            existing = self._gcs.get(gcs_id)
+            if existing is not None:
+                # A previous session with the same ID exists.  This happens
+                # when a GCS restarts quickly: the new AUTH arrives before the
+                # old connection's async _cleanup_on_disconnect() has run
+                # unregister_gcs().  We replace the stale entry regardless of
+                # _connected — that flag is still True at this point because
+                # cleanup is scheduled asynchronously via ensure_future.
+                # The old cleanup's unregister_gcs() call is always safe: it
+                # uses pop(gcs_id, None) and will find either the new session
+                # (which it must not remove) or nothing at all.
+                logger.warning(
+                    "GCS '%s' already in registry (connected=%s) — replacing with reconnecting session",
+                    gcs_id,
+                    existing.protocol._connected,
+                )
+                # Clean up any lingering subscription for the stale session.
+                if existing.subscribed_vehicle_id is not None:
+                    vehicle_subs = self._subscriptions.get(
+                        existing.subscribed_vehicle_id
+                    )
+                    if vehicle_subs is not None:
+                        vehicle_subs.discard(gcs_id)
+                    existing.subscribed_vehicle_id = None
             control, priority, bulk = stream_ids
             session = GCSSession(
                 gcs_id=gcs_id,
@@ -165,19 +184,35 @@ class SessionRegistry:
             )
             return subscribed_gcs_ids
 
-    async def unregister_gcs(self, gcs_id: str) -> None:
+    async def unregister_gcs(
+        self, gcs_id: str, *, protocol: RelayProtocol | None = None
+    ) -> None:
         """Remove GCS from registry and all subscription sets.
 
         Args:
             gcs_id: The GCS client to remove.
+            protocol: If provided, only unregister if the current session belongs
+                to this protocol instance.  Pass the caller's own protocol to
+                avoid accidentally removing a replacement session that was
+                registered under the same ID after a quick reconnect.
         """
         async with self._lock:
-            session = self._gcs.pop(gcs_id, None)
-            if session is not None and session.subscribed_vehicle_id is not None:
-                vehicle_subs = self._subscriptions.get(session.subscribed_vehicle_id)
+            current = self._gcs.get(gcs_id)
+            if current is None:
+                logger.info("GCS '%s' unregistered (already gone)", gcs_id)
+                return
+            if protocol is not None and current.protocol is not protocol:
+                logger.info(
+                    "GCS '%s' unregister skipped — session already replaced by reconnect",
+                    gcs_id,
+                )
+                return
+            self._gcs.pop(gcs_id)
+            if current.subscribed_vehicle_id is not None:
+                vehicle_subs = self._subscriptions.get(current.subscribed_vehicle_id)
                 if vehicle_subs is not None:
                     vehicle_subs.discard(gcs_id)
-                session.subscribed_vehicle_id = None
+                current.subscribed_vehicle_id = None
             logger.info("GCS '%s' unregistered", gcs_id)
 
     async def subscribe(self, gcs_id: str, vehicle_id: str) -> bool:

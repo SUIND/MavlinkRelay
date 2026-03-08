@@ -8,6 +8,7 @@
 #include <mutex>
 #include <queue>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifdef __has_include
@@ -143,6 +144,7 @@ class QuicClient
       STATE_CHANGED,   ///< QUIC connection connected (true) or disconnected (false)
       AUTH_OK,         ///< Server accepted AUTH on the control stream
       AUTH_FAIL,       ///< Server rejected AUTH on the control stream
+      SEND_PONG,       ///< Send a PONG; frame holds the pre-built CBOR payload
     };
     Type type;
     std::vector<uint8_t> frame;
@@ -166,6 +168,10 @@ class QuicClient
   std::condition_variable shutdown_cv_;
   bool shutdown_complete_{false};
 
+  // --- Event processing thread (drains event_queue_ independently of ROS spinner) ---
+  std::thread event_thread_;
+  std::atomic<bool> stop_event_thread_{false};
+
   // --- Per-stream receive state (length-prefix decoder) ---
   /// Per-stream receive state for the `[u16_le length][payload]` frame decoder.
   /// Handles QUIC fragmentation: data may arrive in multiple RECEIVE events.
@@ -183,6 +189,8 @@ class QuicClient
   bool initMsquic();
   bool openStreams();
   void sendAuth();
+  /// Tear down any live connection / event thread so connect() can be called again.
+  void resetForReconnect();
   [[nodiscard]] bool sendOnStream(HQUIC stream, const std::vector<uint8_t>& payload);
   void postEvent(InternalEvent event);
   void decodeFrames(StreamRecvState& state, const uint8_t* data, uint64_t length,

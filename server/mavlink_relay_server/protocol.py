@@ -93,6 +93,14 @@ class RelayProtocol(QuicConnectionProtocol):
         self._last_pong_monotonic: float = 0.0
         self._connected: bool = True
 
+        # Set of stream IDs that have been activated (i.e. the peer has sent
+        # at least one STREAM frame on them, so aioquic has created the stream
+        # object and the server is allowed to write back on them).
+        self._active_streams: set[int] = set()
+        # Frames buffered while waiting for a peer-initiated stream to become
+        # active.  Keyed by stream ID; each value is a list of raw payloads.
+        self._pending_vehicle_frames: dict[int, list[bytes]] = {}
+
     # ------------------------------------------------------------------
     # aioquic event dispatch
     # ------------------------------------------------------------------
@@ -239,7 +247,7 @@ class RelayProtocol(QuicConnectionProtocol):
                 )
 
             elif self._role == "gcs" and self._session_id is not None:
-                await self._registry.unregister_gcs(self._session_id)
+                await self._registry.unregister_gcs(self._session_id, protocol=self)
                 logger.info("GCS %r disconnected", self._session_id)
         except Exception as exc:
             logger.exception("Cleanup on disconnect error: %s", exc)
@@ -259,12 +267,11 @@ class RelayProtocol(QuicConnectionProtocol):
                 if not self._connected:
                     break
 
+                elapsed = time.monotonic() - self._last_pong_monotonic
                 ping_msg: dict[str, Any] = {"type": "PING", "ts": time.time()}
                 self._send_control(encode_control(ping_msg))
                 self.transmit()
-                logger.debug("Sent PING to %s", self._session_id)
-
-                elapsed = time.monotonic() - self._last_pong_monotonic
+                logger.info("Sent PING to %s (elapsed since last PONG: %.1fs)", self._session_id, elapsed)
                 if elapsed > self._config.keepalive_timeout_s:
                     logger.warning(
                         "Keepalive timeout for %s (%.1fs since last PONG)",
@@ -316,6 +323,12 @@ class RelayProtocol(QuicConnectionProtocol):
         Args:
             data: Raw bytes from the control stream, possibly a partial frame.
         """
+        logger.info(
+            "Control stream data from %s: %d bytes, hex=%s",
+            self._session_id,
+            len(data),
+            data[:32].hex(),
+        )
         decoder = self._get_or_create_decoder(0)
         try:
             frames = decoder.feed(data)
@@ -330,6 +343,7 @@ class RelayProtocol(QuicConnectionProtocol):
                 logger.warning("CBOR decode error on control stream: %s", exc)
                 continue
             msg_type = msg.get("type", "")
+            logger.info("Control message from %s: type=%r", self._session_id, msg_type)
             match msg_type:
                 case "AUTH":
                     handle_auth(self, msg, self._registry, self._token_store)
@@ -348,6 +362,12 @@ class RelayProtocol(QuicConnectionProtocol):
         Drops data if not yet authenticated.  Otherwise, decodes complete
         frames and schedules asynchronous relay to subscribed peers.
 
+        Also marks the stream as *active* on first receipt so that the server
+        is allowed to write back on this peer-initiated bidirectional stream
+        (aioquic only permits sends on a peer-initiated stream once it has
+        seen at least one STREAM frame from the peer).  Any GCS→vehicle frames
+        that were buffered while waiting for stream activation are flushed.
+
         Args:
             stream_id: The QUIC stream ID (4 = priority, 8 = bulk).
             data: Raw bytes from the stream, possibly a partial frame.
@@ -355,6 +375,19 @@ class RelayProtocol(QuicConnectionProtocol):
         if not self._authed:
             logger.debug("Dropping MAVLink data — not authenticated")
             return
+
+        # Activate stream on first receipt and flush any buffered frames.
+        if stream_id not in self._active_streams:
+            self._active_streams.add(stream_id)
+            pending = self._pending_vehicle_frames.pop(stream_id, [])
+            if pending:
+                logger.info(
+                    "Stream %d activated for %s — flushing %d buffered GCS→vehicle frame(s)",
+                    stream_id,
+                    self._session_id,
+                    len(pending),
+                )
+                asyncio.ensure_future(self._flush_pending_vehicle_frames(stream_id, pending))
 
         decoder = self._get_or_create_decoder(stream_id)
         try:
@@ -407,10 +440,28 @@ class RelayProtocol(QuicConnectionProtocol):
             vehicle_session = self._registry.get_vehicle_for_gcs(self._session_id)  # type: ignore[arg-type]
             if vehicle_session is None:
                 return
+            vehicle_proto = vehicle_session.protocol
             async with vehicle_session.write_lock:
+                if stream_id not in vehicle_proto._active_streams:
+                    # The vehicle hasn't sent any data on this stream yet, so
+                    # aioquic doesn't have a stream object for it and will raise
+                    # "Cannot send data on unknown peer-initiated stream".
+                    # Buffer the frames; they will be flushed when the vehicle
+                    # activates the stream by sending its first MAVLink frame.
+                    pending = vehicle_proto._pending_vehicle_frames.setdefault(stream_id, [])
+                    pending.extend(frames)
+                    logger.debug(
+                        "GCS '%s' → vehicle '%s': stream %d not yet active, buffered %d frame(s) (%d total pending)",
+                        self._session_id,
+                        vehicle_session.vehicle_id,
+                        stream_id,
+                        len(frames),
+                        len(pending),
+                    )
+                    return
                 for frame in frames:
                     try:
-                        vehicle_session.protocol._send_frame(stream_id, frame)
+                        vehicle_proto._send_frame(stream_id, frame)
                     except ValueError as exc:
                         logger.warning(
                             "GCS '%s' → vehicle '%s': cannot send on stream %d: %s",
@@ -420,7 +471,35 @@ class RelayProtocol(QuicConnectionProtocol):
                             exc,
                         )
                         return
-                vehicle_session.protocol.transmit()
+                vehicle_proto.transmit()
+
+    async def _flush_pending_vehicle_frames(self, stream_id: int, frames: list[bytes]) -> None:
+        """Send buffered GCS→vehicle frames after a vehicle stream becomes active.
+
+        Called when *stream_id* receives its first data from the vehicle,
+        indicating aioquic now has a stream object and permits server-side
+        sends on it.
+
+        Args:
+            stream_id: The now-active QUIC stream ID.
+            frames: Buffered frame payloads to send, in arrival order.
+        """
+        try:
+            self._quic.send_stream_data  # ensure we still have a connection
+            for frame in frames:
+                try:
+                    self._send_frame(stream_id, frame)
+                except ValueError as exc:
+                    logger.warning(
+                        "Flush buffered frame on stream %d for %s failed: %s",
+                        stream_id,
+                        self._session_id,
+                        exc,
+                    )
+                    return
+            self.transmit()
+        except Exception as exc:
+            logger.exception("_flush_pending_vehicle_frames error: %s", exc)
 
     async def _enqueue_or_relay(
         self,
@@ -489,15 +568,13 @@ class RelayProtocol(QuicConnectionProtocol):
         """Record PONG receipt and compute latency."""
         self._last_pong_monotonic = time.monotonic()
         ts = msg.get("ts", 0.0)
+        latency_ms = 0.0
         if ts:
             try:
                 latency_ms = (time.time() - float(ts)) * 1000
             except (TypeError, ValueError):
-                latency_ms = 0.0
-            if latency_ms:
-                logger.debug(
-                    "PONG from %s, latency=%.1f ms", self._session_id, latency_ms
-                )
+                pass
+        logger.info("PONG from %s, latency=%.1f ms", self._session_id, latency_ms)
 
     # ------------------------------------------------------------------
     # Send helpers

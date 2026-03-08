@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 
     ROS_INFO("mavlink_quic_relay node initialized");
 
-    ros::AsyncSpinner spinner(2);
+    ros::AsyncSpinner spinner(4);
     spinner.start();
 
     auto relay_config = mavlink_quic_relay::loadRelayNodeConfig(nh);
