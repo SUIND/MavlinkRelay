@@ -30,6 +30,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PARAMS_ENV="$REPO_ROOT/config/params.env"
+# When deployed to /usr/local/lib/lte-module/, the repo-relative path is wrong;
+# prefer the installed system copy if it exists.
+[[ -f "/etc/lte-module/params.env" ]] && PARAMS_ENV="/etc/lte-module/params.env"
 
 ###############################################################################
 # Logging helpers — all output to stderr (CONVENTIONS.md §2.1)

@@ -50,8 +50,10 @@ else
 fi
 
 # 2) cdc-ether-driver
-if lsmod | grep -q "$LTE_USB_DRIVER" && ip link show "$LTE_INTERFACE_NAME" >/dev/null 2>&1; then
-    pass "cdc-ether-driver" "driver=${LTE_USB_DRIVER} loaded and ${LTE_INTERFACE_NAME} exists"
+# cdc_ether may be built-in (not in lsmod); also check sysfs driver symlink as fallback.
+if (lsmod | grep -q "$LTE_USB_DRIVER" || readlink "/sys/class/net/${LTE_INTERFACE_NAME}/device/driver" 2>/dev/null | grep -q "${LTE_USB_DRIVER}") \
+   && ip link show "$LTE_INTERFACE_NAME" >/dev/null 2>&1; then
+    pass "cdc-ether-driver" "driver=${LTE_USB_DRIVER} active and ${LTE_INTERFACE_NAME} exists"
 else
     fail "cdc-ether-driver" "driver=${LTE_USB_DRIVER} or interface ${LTE_INTERFACE_NAME} missing"
 fi
@@ -78,7 +80,7 @@ net_device_path="$(readlink -f "/sys/class/net/${LTE_INTERFACE_NAME}/device" 2>/
 if [[ -z "$net_device_path" ]]; then
     fail "autosuspend-off" "could not resolve /sys/class/net/${LTE_INTERFACE_NAME}/device"
 else
-    power_control_path="$(readlink -f "${net_device_path}/../../../power/control" 2>/dev/null || true)"
+    power_control_path="$(readlink -f "${net_device_path}/../power/control" 2>/dev/null || true)"
     if [[ -z "$power_control_path" || ! -f "$power_control_path" ]]; then
         fail "autosuspend-off" "power/control not found from ${net_device_path}"
     else

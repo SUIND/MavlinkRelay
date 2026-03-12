@@ -7,7 +7,7 @@ Before=systemd-networkd.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/bash /opt/lte-module/scripts/ecm-bootstrap.sh
+ExecStart=/bin/bash /usr/local/lib/lte-module/ecm-bootstrap.sh
 StandardOutput=journal
 StandardError=journal
 

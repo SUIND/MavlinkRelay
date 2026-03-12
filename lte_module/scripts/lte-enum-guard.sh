@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PARAMS_FILE="$REPO_ROOT/config/params.env"
+[[ -f "/etc/lte-module/params.env" ]] && PARAMS_FILE="/etc/lte-module/params.env"
 DRY_RUN=0
 
 log() {

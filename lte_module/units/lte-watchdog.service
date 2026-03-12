@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash /opt/lte_module/scripts/lte-watchdog.sh
+ExecStart=/bin/bash /usr/local/lib/lte-module/lte-watchdog.sh
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:/var/log/lte-watchdog/watchdog.log
