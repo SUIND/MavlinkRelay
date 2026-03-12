@@ -1,0 +1,5 @@
+3:This document defines the explicit scope for the LTE module used to provide drone telemetry over QUIC from a Jetson Xavier NX. The module manages an EC200U-CN modem (Quectel, USB VID:PID 2c7c:0901) operating in ECM mode, configures a persistent lte0 interface via systemd-networkd, and provides robust non-reboot recovery, telemetry tuning, deployment tooling, and troubleshooting documentation.
+14:- Absolute guardrail: No host reboot as a recovery action (see Non-Goals and guardrail text below).
+31:- Host reboot as recovery: THIS IS AN ABSOLUTE GUARDRAIL. The Jetson host MUST NEVER be rebooted due to LTE failures. The recovery ladder terminates at AT modem reset (Level 4). If all recovery levels fail, the watchdog enters a FAILED state, logs the failure, and waits for operator intervention or service restart.
+67:- Do NOT omit the host-reboot guardrail. The host reboot prohibition must appear verbatim in documentation and checks.
+88:Level 4: AT modem reset commands (AT+CFUN=1,1 or AT+QRST...), final recovery action. Stop here; do not reboot the host.

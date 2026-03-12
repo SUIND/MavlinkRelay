@@ -1,0 +1,11 @@
+scripts/check-apn.sh:148:    AT_PORT="/dev/ttyUSB2"
+tests/unit/test_static_validation.sh:118:# Check 1: hardcoded /dev/ttyUSB2
+tests/unit/test_static_validation.sh:119:log "Checking: no hardcoded /dev/ttyUSB2 as active code path"
+tests/unit/test_static_validation.sh:123:    hits=$(_active_grep '/dev/ttyUSB2' "$f")
+tests/unit/test_static_validation.sh:131:    pass "no-hardcoded-ttyUSB2" "no active /dev/ttyUSB2 references found"
+tests/unit/test_static_validation.sh:132:    evidence_lines+=("[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found")
+tests/unit/test_find_at_port.sh:13:# ── Test 1: --mock-port /dev/ttyUSB2 returns /dev/ttyUSB2 and exits 0 ─────────
+tests/unit/test_find_at_port.sh:15:output=$("$SCRIPT" --mock-port /dev/ttyUSB2 2>/dev/null)
+tests/unit/test_find_at_port.sh:17:if [ "$exit_code" -eq 0 ] && [ "$output" = "/dev/ttyUSB2" ]; then
+tests/unit/test_find_at_port.sh:18:    pass "mock-port-ttyUSB2" "--mock-port /dev/ttyUSB2 → stdout=/dev/ttyUSB2, exit=0"
+tests/unit/test_find_at_port.sh:20:    fail "mock-port-ttyUSB2" "expected stdout=/dev/ttyUSB2 exit=0, got stdout='$output' exit=$exit_code"

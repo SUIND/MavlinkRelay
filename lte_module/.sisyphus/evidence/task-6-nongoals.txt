@@ -1,0 +1,11 @@
+QMI/MBIM: excluded
+NetworkManager: excluded
+IPv6 on LTE: disabled
+GPS/NMEA: excluded
+Modem firmware update: excluded
+RF band locking: opt-in only (not default)
+Carrier-specific APN hardcoding: excluded
+Host reboot as recovery: FORBIDDEN - see guardrail
+
+Host reboot guardrail verbatim:
+"THIS IS AN ABSOLUTE GUARDRAIL. The Jetson host MUST NEVER be rebooted due to LTE failures. The recovery ladder terminates at AT modem reset (Level 4). If all recovery levels fail, the watchdog enters a FAILED state, logs the failure, and waits for operator intervention or service restart."

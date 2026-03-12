@@ -1,0 +1,16 @@
+[Unit]
+Description=EC200U-CN LTE Modem USB Enumeration Guard
+After=network-pre.target
+Wants=network-pre.target
+Before=lte-ecm-bootstrap.service
+Documentation=file:///opt/lte_module/docs/USB-TOPOLOGY.md
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/lte_module/scripts/lte-enum-guard.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

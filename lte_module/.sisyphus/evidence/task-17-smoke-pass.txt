@@ -1,0 +1,4 @@
+Task 17: tests/integration/smoke.sh created
+All 11 checks present: usb-enum, cdc-ether-driver, lte0-up-ipv4, lte0-mtu, autosuspend-off, ecm-mode, sim-ready, lte-data, apn-auto, default-route-lte, eth-metric-lower
+bash -n syntax check: PASS
+Hardware execution: deferred (requires physical modem)

@@ -1,0 +1,18 @@
+# Task 16 — MTU Evidence
+# grep output showing MTU=1400 in network/10-lte0.link
+# Command: grep -n 'MTUBytes' network/10-lte0.link
+# Generated: 2026-03-12
+
+36:# MTUBytes=1400 is set to prevent IP fragmentation in LTE environments:
+55:MTUBytes=1400
+
+# Interpretation:
+# Line 36: Comment in the file explaining the rationale for MTU=1400
+# Line 55: Actual [Link] section setting — MTUBytes=1400
+#
+# The MTU is set to 1400 (not 1500) to accommodate LTE GTP encapsulation overhead
+# (~20 bytes), preventing IP fragmentation on the air interface.
+# This is in the [Link] section of the systemd-networkd .link file, which applies
+# the MTU at interface bring-up via the cdc_ether driver.
+#
+# Reference: docs/TUNING.md §1 (MTU Tuning)

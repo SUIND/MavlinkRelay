@@ -1,0 +1,29 @@
+TASK 9 — IDEMPOTENCY EVIDENCE
+==============================
+
+CLAIM: ecm-bootstrap.sh exits 0 without sending AT+QCFG="usbnet",1 when mode is already ECM.
+
+CODE SECTION (scripts/ecm-bootstrap.sh — idempotency gate):
+
+    # -------------------------------------------------------------------------
+    # IDEMPOTENCY GATE: query current mode before sending any set commands.
+    # If already ECM (mode 1) → exit 0 immediately, no writes.
+    # -------------------------------------------------------------------------
+    if query_ecm_mode "$at_port"; then
+        log_info "ECM mode already active — no change required"
+        log_info "=== ECM Bootstrap complete (no-op) ==="
+        exit 0
+    fi
+
+EXPLANATION:
+  query_ecm_mode() issues AT+QCFG="usbnet" and checks the response for ",1"
+  (the ECM mode indicator). If the response matches, the function returns 0 and
+  the gate exits the script immediately with code 0 — BEFORE any AT write
+  commands (AT+QCFG="usbnet",1 or AT+CFUN=1,1) are issued.
+
+  The set-mode block only executes if query_ecm_mode returns 1 (non-ECM).
+
+DRY-RUN PROOF (--dry-run --mock-ecm-mode 1):
+
+
+EXIT CODE: 0

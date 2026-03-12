@@ -1,0 +1,3 @@
+=== Checking for reboot commands in scripts/lte-recovery.sh (non-comment lines) ===
+PASS: No reboot/shutdown -r/systemctl reboot found in executable code of lte-recovery.sh
+Recovery ladder stops at Level 4 (AT+CFUN=1,1 modem reset). No host reboot present.

@@ -1,0 +1,28 @@
+HARDWARE_REQUIRED
+
+This test verifies warm-standby failover behavior at runtime (live cable unplug/replug).
+
+Required hardware:
+  - Jetson Xavier NX with systemd-networkd running
+  - eth1 active with DHCP lease (cable plugged in)
+  - lte0 active with DHCP lease (EC200U-CN modem enumerated)
+
+To run when hardware is available:
+  1. Verify both routes present:
+       ip -4 route show default
+     Expected:
+       default via <gw> dev eth1 proto dhcp metric 100
+       default via <gw> dev lte0 proto dhcp metric 1000
+
+  2. Simulate failover (unplug eth1 cable), wait ~5s, then:
+       ip -4 route show default
+     Expected:
+       default via <gw> dev lte0 proto dhcp metric 1000
+
+  3. Restore (replug eth1 cable), wait for DHCP, then:
+       ip -4 route show default
+     Expected (both routes restored):
+       default via <gw> dev eth1 proto dhcp metric 100
+       default via <gw> dev lte0 proto dhcp metric 1000
+
+STATUS: SKIP — no hardware available in current environment

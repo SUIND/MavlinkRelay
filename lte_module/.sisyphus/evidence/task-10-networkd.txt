@@ -1,0 +1,79 @@
+Task 10 Evidence: network/20-lte0.network Configuration
+============================================================
+
+File: network/20-lte0.network
+Created: 2026-03-12
+Purpose: systemd-networkd configuration for EC200U-CN LTE modem interface
+
+CONTENT (as deployed):
+─────────────────────
+
+# EC200U-CN LTE Interface Network Configuration
+# Managed by systemd-networkd (NOT NetworkManager)
+# Interface lte0 is renamed from usb0 by 10-lte0.link via MAC match
+
+[Match]
+Name=lte0
+
+[Network]
+DHCP=ipv4
+IPv6AcceptRA=no
+LinkLocalAddressing=ipv4
+
+[DHCP]
+RouteMetric=1000
+UseDNS=yes
+UseNTP=no
+SendHostname=yes
+# EC200U-CN DHCP server hands short leases; keep renewing aggressively
+MaxAttempts=5
+
+[Link]
+RequiredForOnline=no
+
+VERIFICATION CHECKLIST:
+──────────────────────
+
+✓ IPv4-only DHCP enabled: DHCP=ipv4
+✓ IPv6 disabled: IPv6AcceptRA=no
+✓ Route metric for LTE fallback: RouteMetric=1000
+✓ Route metric for Ethernet (10-eth0.network, 10-eth1.network): RouteMetric=100
+✓ MTU NOT duplicated (already set in 10-lte0.link): MTUBytes=1400
+✓ Interface match: Name=lte0 (renamed by 10-lte0.link MAC: 02:4b:b3:b9:eb:e5)
+✓ Boot not blocked: RequiredForOnline=no
+✓ DHCP aggressive retries for short EC200U-CN leases: MaxAttempts=5
+✓ No NetworkManager references: pure systemd-networkd syntax
+
+ROUTING POLICY ALIGNMENT:
+────────────────────────
+
+Ethernet-Preferred / LTE-Fallback Policy (ROUTING-POLICY.md):
+  - eth0/eth1 with metric 100: Primary uplink, active when cable present
+  - lte0 with metric 1000: Warm standby, active when Ethernet fails
+  - Failover: Automatic via kernel route metric selection (< 5 s)
+  - Recovery: Automatic when Ethernet returns (LTE reverts to shadow standby)
+
+DEPLOYMENT TARGET:
+──────────────────
+
+File location: /etc/systemd/network/20-lte0.network
+
+Installation steps (on Jetson):
+  1. Copy network/20-lte0.network to /etc/systemd/network/20-lte0.network
+  2. Copy network/10-eth0.network to /etc/systemd/network/10-eth0.network
+  3. Copy network/10-eth1.network to /etc/systemd/network/10-eth1.network
+  4. systemctl restart systemd-networkd
+  5. Verify: ip -4 route show default
+     Expected with Ethernet active:
+       default via <eth-gw> dev eth1 proto dhcp metric 100
+       default via <lte-gw> dev lte0 proto dhcp metric 1000
+
+COMPLETION:
+───────────
+
+All three .network files created:
+  ✓ network/20-lte0.network (EC200U-CN LTE, metric 1000)
+  ✓ network/10-eth0.network (Secondary Ethernet, metric 100)
+  ✓ network/10-eth1.network (Primary Ethernet, metric 100)
+
+Evidence recorded: 2026-03-12

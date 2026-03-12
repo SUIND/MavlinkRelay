@@ -1,0 +1,3 @@
+[2026-03-12 14:10:47] [INFO] === LTE Recovery starting: level=1 dry_run=true ===
+[2026-03-12 14:10:47] [INFO] L1: DHCP renew on lte0
+[2026-03-12 14:10:47] [INFO] L1: would run: networkctl renew lte0

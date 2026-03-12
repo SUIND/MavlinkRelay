@@ -1,0 +1,35 @@
+# Evidence: Task 4 — Routing Policy Design Document
+# File created: docs/ROUTING-POLICY.md
+# Date: 2026-03-12
+
+## First 30 lines of docs/ROUTING-POLICY.md:
+
+# Routing Policy: Ethernet-Preferred / LTE-Fallback
+
+**System:** Jetson Xavier NX — MavlinkRelay telemetry gateway  
+**Network manager:** `systemd-networkd` (NetworkManager is NOT used)  
+**Date:** 2026-03-12  
+
+---
+
+## Policy Summary
+
+| Principle | Description |
+|-----------|-------------|
+| **Ethernet preferred** | When Ethernet carrier is active (cable plugged in, link up), all default-route traffic uses Ethernet |
+| **LTE warm standby** | LTE (`lte0`) is **always-on and always connected** — it holds a DHCP lease and a default route at all times, including when Ethernet is active |
+| **Zero-operator failover** | No manual intervention is ever required to switch between uplinks |
+| **Mechanism** | `systemd-networkd` route metrics — lower metric = higher priority |
+
+### Golden Rule
+
+**LTE is NEVER disabled when Ethernet is active.**  
+It stays connected, holds its DHCP lease, and keeps its default route in the kernel routing table.  
+The kernel ignores it only because Ethernet's route metric is lower.  
+The moment Ethernet drops, LTE's route is already there.
+
+---
+
+## Implementation Details
+
+### 1. Route Metrics

@@ -1,0 +1,68 @@
+=== task-11-apn-param.txt: Evidence that no carrier APN is hardcoded ===
+
+-- All APN-related lines in scripts/check-apn.sh: --
+2:# check-apn.sh — Verify SIM state, LTE registration, configure APN, probe connectivity
+7:#   3. APN logic:
+8:#      - LTE_APN empty/unset  → auto/default APN; no AT+CGDCONT sent
+9:#      - LTE_APN non-empty    → send AT+CGDCONT=1,"IP","${LTE_APN}"
+18:#   --mock-apn-mode MODE    Simulate APN path: "auto" or "explicit"
+52:MOCK_APN_MODE=""     # empty = no mock; "auto" or "explicit"
+77:            MOCK_APN_MODE="$2"
+78:            if [[ "$MOCK_APN_MODE" != "auto" && "$MOCK_APN_MODE" != "explicit" ]]; then
+79:                log_error "--mock-apn-mode must be 'auto' or 'explicit'; got: $MOCK_APN_MODE"
+114:# LTE_APN: empty string = auto/default APN (modem negotiates with network)
+115:#           non-empty string = explicit APN configured by operator
+116:LTE_APN="${LTE_APN:-}"
+219:# Step 4: APN logic
+222:log_info "Step 4: Evaluating APN configuration..."
+224:# Determine effective APN mode (mock overrides real LTE_APN check)
+225:if [[ -n "$MOCK_APN_MODE" ]]; then
+226:    _apn_mode="$MOCK_APN_MODE"
+227:    log_info "[MOCK] APN mode forced to: ${_apn_mode}"
+228:elif [[ -z "$LTE_APN" ]]; then
+235:    # APN=auto (using modem default): do NOT send any AT+CGDCONT command
+236:    log_info "APN=auto (using modem default) — no PDP context modification"
+237:    log_info "Modem will negotiate APN automatically with the carrier network"
+239:    # APN=explicit: set PDP context with the configured APN
+240:    log_info "APN=explicit: ${LTE_APN}"
+242:        log_info "[DRY-RUN] Would send: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+244:        log_info "Setting PDP context: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+245:        APN_RESPONSE="$(send_at "$AT_PORT" "AT+CGDCONT=1,\"IP\",\"${LTE_APN}\"")"
+246:        if ! echo "$APN_RESPONSE" | grep -q "OK"; then
+247:            log_error "Failed to set APN '${LTE_APN}' — response: $(echo "$APN_RESPONSE" | tr '\r\n' ' ')"
+250:        log_info "PDP context set successfully: APN=${LTE_APN}"
+268:        log_error "connectivity probe failed — APN may be incorrect or network not reachable"
+270:        log_error "Hint: If APN=auto did not work, set LTE_APN in config/params.env"
+281:log_info "APN verification complete: all checks passed"
+
+-- Check for hardcoded carrier APN strings (should be ZERO matches): --
+Searching for: cmnbj, internet, broadband, data, mobile, wap, cmnet, cmwap, 3gnet, uninet
+
+  OK: 'cmnbj' not hardcoded
+  OK: 'internet' not hardcoded
+  OK: 'broadband' not hardcoded
+  OK: 'mobile' not hardcoded
+  OK: 'wap' not hardcoded
+  OK: 'cmnet' not hardcoded
+  OK: 'cmwap' not hardcoded
+  OK: '3gnet' not hardcoded
+  OK: 'uninet' not hardcoded
+
+-- All occurrences of $APN / ${APN} / LTE_APN references: --
+8:#      - LTE_APN empty/unset  → auto/default APN; no AT+CGDCONT sent
+9:#      - LTE_APN non-empty    → send AT+CGDCONT=1,"IP","${LTE_APN}"
+114:# LTE_APN: empty string = auto/default APN (modem negotiates with network)
+116:LTE_APN="${LTE_APN:-}"
+224:# Determine effective APN mode (mock overrides real LTE_APN check)
+228:elif [[ -z "$LTE_APN" ]]; then
+240:    log_info "APN=explicit: ${LTE_APN}"
+242:        log_info "[DRY-RUN] Would send: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+244:        log_info "Setting PDP context: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+245:        APN_RESPONSE="$(send_at "$AT_PORT" "AT+CGDCONT=1,\"IP\",\"${LTE_APN}\"")"
+247:            log_error "Failed to set APN '${LTE_APN}' — response: $(echo "$APN_RESPONSE" | tr '\r\n' ' ')"
+250:        log_info "PDP context set successfully: APN=${LTE_APN}"
+270:        log_error "Hint: If APN=auto did not work, set LTE_APN in config/params.env"
+
+CONCLUSION: The only APN reference is the variable ${LTE_APN}, sourced from
+config/params.env (LTE_APN="" by default). No carrier APN string is hardcoded.
+The APN value (if any) comes exclusively from the LTE_APN deployment parameter.

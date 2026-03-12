@@ -1,0 +1,16 @@
+[Unit]
+Description=LTE Link Health Watchdog
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /opt/lte_module/scripts/lte-watchdog.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/lte-watchdog/watchdog.log
+StandardError=append:/var/log/lte-watchdog/watchdog.log
+LogsDirectory=lte-watchdog
+
+[Install]
+WantedBy=multi-user.target

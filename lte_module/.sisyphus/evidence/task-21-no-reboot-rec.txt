@@ -1,0 +1,7 @@
+3:Purpose: practical, command-first troubleshooting for the Quectel EC200U-CN modem on Jetson Xavier NX. Use this guide at the vehicle site. Follow the hard guardrail: do NOT recommend host-level reboot or shutdown as any recovery action. When uncertain, collect an evidence pack and escalate to support.
+55:- Do not perform host-level reboot or shutdown. Instead use the staged recovery ladder (L1..L4) implemented by `scripts/lte-recovery.sh` and invoked by the watchdog.
+78:Resolution steps (field-safe, no host reboot)
+95:4. If the guard service failed due to missing device, capture evidence and escalate (do NOT reboot host):
+278:- The watchdog implements the staged ladder L1..L4; manual L4 is available for operators. Never recommend host reboot.
+361:- If editing files remotely, ensure you follow change management. Restarting systemd-networkd is acceptable; host-level reboot is not.
+498:4. Do not attempt host-level reboot or shutdown. If you think a host-level restart is required, collect the evidence pack and escalate to support.

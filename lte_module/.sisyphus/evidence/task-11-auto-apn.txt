@@ -1,0 +1,56 @@
+=== task-11-auto-apn.txt: Evidence that auto/default APN is attempted first ===
+
+-- Script: scripts/check-apn.sh --
+
+The APN logic section (Step 4) checks if LTE_APN is empty.
+When empty (the default in config/params.env), the 'auto' path is taken:
+NO AT+CGDCONT command is sent, letting the modem negotiate APN automatically.
+
+-- Relevant code (lines 218-251): --
+##############################################################################
+# Step 4: APN logic
+##############################################################################
+
+log_info "Step 4: Evaluating APN configuration..."
+
+# Determine effective APN mode (mock overrides real LTE_APN check)
+if [[ -n "$MOCK_APN_MODE" ]]; then
+    _apn_mode="$MOCK_APN_MODE"
+    log_info "[MOCK] APN mode forced to: ${_apn_mode}"
+elif [[ -z "$LTE_APN" ]]; then
+    _apn_mode="auto"
+else
+    _apn_mode="explicit"
+fi
+
+if [[ "$_apn_mode" == "auto" ]]; then
+    # APN=auto (using modem default): do NOT send any AT+CGDCONT command
+    log_info "APN=auto (using modem default) — no PDP context modification"
+    log_info "Modem will negotiate APN automatically with the carrier network"
+else
+    # APN=explicit: set PDP context with the configured APN
+    log_info "APN=explicit: ${LTE_APN}"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "[DRY-RUN] Would send: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+    else
+        log_info "Setting PDP context: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+        APN_RESPONSE="$(send_at "$AT_PORT" "AT+CGDCONT=1,\"IP\",\"${LTE_APN}\"")"
+        if ! echo "$APN_RESPONSE" | grep -q "OK"; then
+            log_error "Failed to set APN '${LTE_APN}' — response: $(echo "$APN_RESPONSE" | tr '\r\n' ' ')"
+            exit 3
+        fi
+        log_info "PDP context set successfully: APN=${LTE_APN}"
+    fi
+
+-- Default APN value in config/params.env: --
+LTE_APN=""
+
+-- Logic flow when LTE_APN="" (default): --
+  1. MOCK_APN_MODE is empty (no mock)
+  2. LTE_APN is empty string -> _apn_mode="auto"
+  3. Branch: if [[ "$_apn_mode" == "auto" ]] -> TRUE
+  4. log_info "APN=auto (using modem default) — no PDP context modification"
+  5. No AT+CGDCONT=1,... command is sent
+  6. Modem uses its internal default APN from SIM/network negotiation
+
+-- Only if LTE_APN is explicitly set to a non-empty value does the script send AT+CGDCONT --

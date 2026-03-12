@@ -1,0 +1,5 @@
+Task 18: scripts/lte-evidence-pack.sh created
+Collects: journald, ip-addr, ip-route, networkctl, lsusb, udevadm, dmesg, evidence files
+Packages to: /tmp/lte-diag-<timestamp>.tar.gz
+bash -n syntax check: PASS
+--dry-run flag supported for safe preview

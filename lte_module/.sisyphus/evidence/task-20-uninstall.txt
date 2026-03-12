@@ -1,0 +1,26 @@
+[2026-03-12 14:55:17] [INFO] DRY RUN mode enabled: no system changes will be made
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: systemctl stop lte-watchdog.service lte-ecm-bootstrap.service lte-enum-guard.service
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: systemctl disable lte-watchdog.service lte-ecm-bootstrap.service lte-enum-guard.service
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: systemctl unmask nv-l4t-usb-device-mode
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/udev/rules.d/99-ec200u-lte.rules
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/network/10-lte0.link
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/network/20-lte0.network
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/network/10-eth0.network
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/network/10-eth1.network
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/system/lte-enum-guard.service
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/system/lte-ecm-bootstrap.service
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/systemd/system/lte-watchdog.service
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/find-at-port.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/ecm-bootstrap.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/lte-enum-guard.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/lte-watchdog.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/lte-recovery.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/check-apn.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /usr/local/lib/lte-module/lte-evidence-pack.sh
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/lte-module/params.env
+[2026-03-12 14:55:17] [INFO] Not present (skip): /etc/logrotate.d/lte-watchdog
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: rmdir --ignore-fail-on-non-empty /usr/local/lib/lte-module
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: rmdir --ignore-fail-on-non-empty /etc/lte-module
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: systemctl daemon-reload
+[2026-03-12 14:55:17] [INFO] (dry-run) Would run: udevadm control --reload-rules
+Uninstall complete: 0 file(s) removed

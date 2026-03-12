@@ -1,0 +1,1 @@
+PASS NO_COVERAGE path (state=NO_COVERAGE, recovery_called=0)

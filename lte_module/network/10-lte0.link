@@ -1,0 +1,55 @@
+# EC200U-CN LTE Modem Interface Renaming Configuration
+#
+# This systemd-networkd .link file renames the EC200U-CN modem's interface
+# from 'usb0' (kernel default for CDC-ECM devices) to 'lte0'.
+#
+# HARDWARE IDENTIFICATION:
+# - VID:PID: 2c7c:0901 (Quectel EC200U-CN)
+# - MAC: 02:4b:b3:b9:eb:e5 (CONFIRMED STABLE across hot-plug re-enumeration)
+#   * Device re-enumeration during kernel version changes or reboots may result in
+#     different USB device numbers (e.g. /dev/bus/usb/X/Y changes)
+#   * However, the MAC address remains identical — this is the stable identifier
+#   * Proof: User dmesg showed USB device changed from 3→5, MAC stayed identical
+# - Driver: cdc_ether
+#
+# MATCHING STRATEGY:
+# We use MAC-based matching (MACAddress=02:4b:b3:b9:eb:e5) instead of USB path
+# matching (KERNELS=...) because:
+# - USB device paths can change between kernel versions and reboots
+# - MAC addresses are burned into the modem's hardware and remain stable
+# - This ensures the rename persists across firmware updates and device changes
+#
+# IF MAC CHANGES (when using a different EC200U unit):
+# Update the MACAddress line below to match the new hardware's MAC.
+# To find the MAC: ip link show or cat /sys/class/net/usb0/address
+#
+# DEPLOYMENT:
+# This file must be installed to /etc/systemd/network/10-lte0.link on the target system.
+# The 10- prefix ensures this is processed before .network files (20-, 30-, etc.).
+#
+# FILE NUMBERING CONVENTION:
+# - 10-*.link: Interface renaming rules (execute first)
+# - 20-*.network or 25-*.network: Network configuration (execute after)
+# - Higher numbers: Fallback or special cases
+#
+# MTU TUNING FOR TELEMETRY:
+# MTUBytes=1400 is set to prevent IP fragmentation in LTE environments:
+# - LTE uses GTP (GPRS Tunneling Protocol) internally, adding ~20 bytes overhead
+# - Effective radio-layer MTU is typically 1420-1450 bytes
+# - Setting host-side MTU=1400 ensures application-layer datagrams fit without
+#   needing IP-level fragmentation, which is problematic in:
+#   * High-latency remote environments (UAV telemetry over continental 4G)
+#   * Lossy links where fragmentation increases retransmit overhead
+#   * Telemetry traffic patterns (many small UDP packets for MAVLink)
+
+[Match]
+# Match on the stable MAC address of the EC200U-CN modem
+MACAddress=02:4b:b3:b9:eb:e5
+
+[Link]
+# Rename the interface to 'lte0'
+Name=lte0
+
+# Set MTU to 1400 bytes for LTE GTP protocol overhead accommodation
+# This prevents fragmentation in telemetry traffic over high-latency links
+MTUBytes=1400

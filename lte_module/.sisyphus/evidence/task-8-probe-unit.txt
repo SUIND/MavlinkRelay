@@ -1,0 +1,8 @@
+[PASS] mock-port-ttyUSB2: --mock-port /dev/ttyUSB2 → stdout=/dev/ttyUSB2, exit=0
+[PASS] mock-port-ttyUSB0: --mock-port /dev/ttyUSB0 → stdout=/dev/ttyUSB0, exit=0
+[PASS] mock-port-no-arg: --mock-port (no arg) exits 2 (config error)
+[PASS] unknown-flag: --bogus exits 2 (config error)
+[PASS] dry-run-exits-3: --dry-run exits 3 (no AT port in dry-run mode)
+[PASS] syntax-check: bash -n scripts/find-at-port.sh passes syntax check
+---
+RESULTS: 6 passed, 0 failed, 0 skipped

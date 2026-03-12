@@ -1,0 +1,189 @@
+F1 PLAN COMPLIANCE AUDIT — FINAL REPORT
+Generated: Thu Mar 12 2026
+Working dir: /home/kevin/workspace/MavlinkRelay/lte_module
+========================================================
+
+TASK RESULTS
+============
+
+T1 — Skeleton & Conventions
+  [PASS] config/params.env exists
+  [PASS] APN/metric vars present (LTE_ROUTE_METRIC or similar)
+  [PASS] ETH_ROUTE_METRIC or ETHERNET_METRIC present
+  [PASS] docs/CONVENTIONS.md exists
+  [PASS] no-reboot rule documented
+  STATUS: PASS
+
+T2 — udev rules
+  [PASS] rules/99-ec200u-lte.rules exists
+  [PASS] VID:PID (2c7c / idVendor=2c7c) present
+  [PASS] autosuspend / power/control present
+  [PASS] ID_MM_DEVICE_IGNORE present (ModemManager block)
+  STATUS: PASS
+
+T3 — .link file
+  [PASS] network/10-lte0.link exists
+  [PASS] MAC address / MACAddress match present
+  [PASS] Name=lte0 present
+  [PASS] MTUBytes=1400 present
+  STATUS: PASS
+
+T4 — Routing policy doc
+  [PASS] docs/ROUTING-POLICY.md exists
+  [PASS] Metric values (100) documented
+  STATUS: PASS
+
+T5 — Test harness
+  [PASS] tests/lib/evidence.sh exists
+  [NOTE] Pattern 'record_evidence|function record' not matched — function is named 'save_evidence'
+         save_evidence() is the evidence-capture function (functionally equivalent)
+  [PASS] tests/unit/run_all.sh exists
+  [PASS] tests/unit/test_placeholder.sh exists
+  STATUS: PASS (save_evidence satisfies the record/evidence-capture requirement)
+
+T6 — SCOPE.md
+  [PASS] docs/SCOPE.md exists
+  [PASS] Non-goals (no QMI, no MBIM, no GPS, etc.) present
+  [PASS] In-scope items (ECM, networkd, LTE) present
+  STATUS: PASS
+
+T7 — USB enum guard
+  [PASS] units/lte-enum-guard.service exists
+  [PASS] scripts/lte-enum-guard.sh exists
+  [PASS] Enumeration check (lsusb / 2c7c / enumerat) present
+  STATUS: PASS
+
+T8 — AT port discovery
+  [PASS] scripts/find-at-port.sh exists
+  [PASS] Dynamic scan (ttyUSB* / for ttyUSB / ls ttyUSB) present
+  [PASS] No hardcoded /dev/ttyUSB[0-9] path (outside comments/mock)
+  STATUS: PASS
+
+T9 — ECM bootstrap
+  [PASS] scripts/ecm-bootstrap.sh exists
+  [PASS] units/lte-ecm-bootstrap.service exists
+  [PASS] AT command (usbnet / AT+QCFG) present
+  [PASS] dry-run / DRY_RUN support present
+  STATUS: PASS
+
+T10 — networkd .network files
+  [PASS] network/10-eth0.network exists
+  [PASS] network/10-eth1.network exists
+  [PASS] network/20-lte0.network exists
+  [PASS] RouteMetric=100 in 10-eth0.network
+  [PASS] RouteMetric=100 in 10-eth1.network
+  [PASS] RouteMetric=1000 in 20-lte0.network
+  [PASS] IPv6 disabled in lte0 (LinkLocalAddressing=no or DHCP=ipv4)
+  [PASS] ConfigureWithoutCarrier=no in 10-eth0.network
+  STATUS: PASS
+
+T11 — check-apn.sh
+  [PASS] scripts/check-apn.sh exists
+  [PASS] APN check (AT+CGDCONT / AT+CGACT / APN) present
+  [PASS] dry-run / DRY_RUN support present
+  STATUS: PASS
+
+T12 — Static validation
+  [PASS] tests/unit/test_static_validation.sh exists
+  [PASS] scripts/validate.sh exists
+  [PASS] bash tests/unit/test_static_validation.sh => RESULTS: 24 passed, 0 failed
+  STATUS: PASS
+
+T13 — LTE watchdog
+  [PASS] scripts/lte-watchdog.sh exists
+  [PASS] units/lte-watchdog.service exists
+  [PASS] Recovery ladder (L1/L2/L3/L4/recovery) present
+  [PASS] No reboot command in active (non-comment) code
+  STATUS: PASS
+
+T14 — lte-recovery.sh
+  [PASS] scripts/lte-recovery.sh exists
+  [PASS] L1 (DHCP renew / networkctl renew) present
+  [PASS] L2 (link bounce / ip link down) present
+  [PASS] L3 (USB rebind / cdc_ether / unbind / bind) present
+  [PASS] L4 (AT reset / AT+CFUN / AT+QRST / modem reset) present
+  [PASS] No reboot command in active (non-comment) code
+  STATUS: PASS
+
+T15 — Route metrics test
+  [PASS] tests/unit/test_route_metrics.sh exists
+  [PASS] bash tests/unit/test_route_metrics.sh => passed
+  STATUS: PASS
+
+T16 — Tuning
+  [PASS] docs/TUNING.md exists
+  [PASS] scripts/verify-tuning.sh exists
+  [PASS] Tuning content (MTU / keepalive / autosuspend) present
+  STATUS: PASS
+
+T17 — Smoke runner
+  [PASS] tests/integration/smoke.sh exists
+  [PASS] Line count >= 100 (actual: 210 lines)
+  [PASS] Key checks (lsusb / lte0 / DHCP / ping / dig) present
+  STATUS: PASS
+
+T18 — Evidence pack & logrotate
+  [PASS] config/lte-watchdog-logrotate exists
+  [PASS] scripts/lte-evidence-pack.sh exists
+  [PASS] Pack content (tar / journalctl / ip route / ip addr) present
+  STATUS: PASS
+
+T19 — Failure injection
+  [PASS] tests/integration/failure_inject.sh exists
+  [PASS] scenario-a present
+  [PASS] scenario-b present
+  [PASS] scenario-c present
+  [PASS] scenario-d present
+  [PASS] scenario-e present
+  STATUS: PASS
+
+T20 — Install/uninstall
+  [PASS] install.sh exists
+  [PASS] uninstall.sh exists
+  [PASS] install.sh line count >= 100 (actual: 206 lines)
+  [PASS] Install scope (udev / network / units / rules) present
+  [PASS] Uninstall action (remove / rm / unlink / disable) present
+  STATUS: PASS
+
+T21 — Troubleshooting guide
+  [PASS] docs/troubleshooting.md exists
+  [PASS] Line count >= 100 (actual: 502 lines)
+  [PASS] Guide content (lte0 / AT / watchdog / recovery) present
+  STATUS: PASS
+
+T22 — Acceptance script
+  [PASS] tests/integration/acceptance.sh exists
+  [PASS] bash tests/integration/acceptance.sh --skip-hardware:
+         Overall: PASS (3 passed, 0 failed, 3 skipped)
+  STATUS: PASS
+
+========================================================
+MUST-NOT-HAVE GLOBAL SCAN
+========================================================
+  [PASS] no reboot in scripts/ (active, non-comment code)
+  [PASS] no hardcoded /dev/ttyUSB[0-9] in scripts/
+  [PASS] no NetworkManager / nmcli in scripts/ config/ network/ units/
+  [PASS] no QMI / MBIM in scripts/ config/ network/ units/
+  [PASS] no set -e / set -euo pipefail in tests/
+
+========================================================
+UNIT TEST SUITE (bash tests/unit/run_all.sh)
+========================================================
+  [PASS] test_find_at_port.sh passed
+  [PASS] test_placeholder.sh passed
+  [PASS] test_recovery.sh passed
+  [PASS] test_route_metrics.sh passed
+  [PASS] test_static_validation.sh passed (24 passed, 0 failed)
+  [PASS] test_watchdog.sh passed (5 passed, 0 failed)
+  All 6 test suites passed.
+
+========================================================
+SUMMARY
+========================================================
+Tasks checked : 22
+  PASS        : 22
+  FAIL        : 0
+
+All 22 tasks PASS. All must-not-have scans clean. Unit test suite fully green.
+
+VERDICT: APPROVE

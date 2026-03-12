@@ -1,0 +1,22 @@
+=== Checking for hardcoded USB sysfs paths in scripts/lte-recovery.sh ===
+PASS: No hardcoded /sys/bus/usb/devices/1- path found in lte-recovery.sh
+
+=== Dynamic path derivation pattern used ===
+290:    # Walk: /sys/class/net/lte0/device  ->  (USB interface node, e.g. 1-1.1:1.0)
+293:    #   /sys/class/net/lte0/device/../../../  = USB device node (e.g. 1-1.1)
+294:    # We need the interface node: /sys/class/net/lte0/device  (the USB interface, e.g. 1-1.1:1.0)
+295:    local net_dev_path
+296:    net_dev_path="$(readlink -f "/sys/class/net/${LTE_INTERFACE_NAME}/device" 2>/dev/null || true)"
+298:    if [[ -z "$net_dev_path" ]]; then
+303:    log_debug "L3: net device sysfs path: ${net_dev_path}"
+306:    local usb_interface_id
+307:    usb_interface_id="$(basename "$net_dev_path")"
+309:    if [[ -z "$usb_interface_id" ]]; then
+310:        log_error "L3: could not extract USB interface ID from sysfs path: ${net_dev_path}"
+314:    log_info "L3: USB interface ID: ${usb_interface_id}"
+325:    log_info "L3: unbinding ${usb_interface_id} from ${LTE_USB_DRIVER}"
+326:    if ! echo "$usb_interface_id" > "${driver_path}/unbind" 2>/dev/null; then
+327:        log_error "L3: failed to unbind ${usb_interface_id}"
+334:    log_info "L3: binding ${usb_interface_id} to ${LTE_USB_DRIVER}"
+335:    if ! echo "$usb_interface_id" > "${driver_path}/bind" 2>/dev/null; then
+336:        log_error "L3: failed to bind ${usb_interface_id}"

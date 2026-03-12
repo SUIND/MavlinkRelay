@@ -1,0 +1,24 @@
+=== Task 15: Route Metric Static Verification ===
+Date: 2026-03-12 08:26:02 UTC
+
+--- network/20-lte0.network ---
+14:RouteMetric=1000
+
+--- network/10-eth0.network ---
+11:ConfigureWithoutCarrier=no
+14:RouteMetric=100
+
+--- network/10-eth1.network ---
+11:ConfigureWithoutCarrier=no
+14:RouteMetric=100
+
+--- Test Results ---
+[PASS] lte0-metric-1000: network/20-lte0.network contains RouteMetric=1000
+[PASS] eth0-metric-100: network/10-eth0.network contains RouteMetric=100
+[PASS] eth1-metric-100: network/10-eth1.network contains RouteMetric=100
+[PASS] eth-lower-than-lte: Ethernet metrics (100,100) < LTE metric (1000)
+[PASS] lte-higher-than-eth: LTE metric (1000) > Ethernet metrics (100,100)
+[PASS] eth0-no-phantom-routes: network/10-eth0.network has ConfigureWithoutCarrier=no
+[PASS] eth1-no-phantom-routes: network/10-eth1.network has ConfigureWithoutCarrier=no
+---
+RESULTS: 7 passed, 0 failed, 0 skipped

@@ -1,0 +1,2 @@
+/home/kevin/workspace/MavlinkRelay/lte_module/network/10-lte0.link:# from 'usb0' (kernel default for CDC-ECM devices) to 'lte0'.
+/home/kevin/workspace/MavlinkRelay/lte_module/network/10-lte0.link:# To find the MAC: ip link show or cat /sys/class/net/usb0/address

@@ -1,0 +1,435 @@
+==============================
+ EC200U-CN LTE Acceptance Test
+ 2026-03-12T11:32:05+01:00
+ skip-hardware: 0
+ evidence: /home/suind/MavlinkRelay/lte_module/.sisyphus/evidence/acceptance-20260312_113205.txt
+==============================
+
+[STEP 1] Static Validation
+::group::static-validation
+=== Running static validation ===
+=== Static Validation ===
+Repo root: /home/suind/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T10:32:05Z
+
+Found 21 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/lte-evidence-pack.sh
+  scripts/lte-recovery.sh
+  scripts/lte-watchdog.sh
+  scripts/validate.sh
+  scripts/verify-tuning.sh
+  tests/integration/acceptance.sh
+  tests/integration/failure_inject.sh
+  tests/integration/run_all.sh
+  tests/integration/smoke.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_recovery.sh
+  tests/unit/test_route_metrics.sh
+  tests/unit/test_static_validation.sh
+  tests/unit/test_watchdog.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/lte-evidence-pack.sh: syntax OK
+[PASS] bash-n: scripts/lte-recovery.sh: syntax OK
+[PASS] bash-n: scripts/lte-watchdog.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: scripts/verify-tuning.sh: syntax OK
+[PASS] bash-n: tests/integration/acceptance.sh: syntax OK
+[PASS] bash-n: tests/integration/failure_inject.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/integration/smoke.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_recovery.sh: syntax OK
+[PASS] bash-n: tests/unit/test_route_metrics.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+[PASS] bash-n: tests/unit/test_watchdog.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-evidence-pack.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-recovery.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-watchdog.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/verify-tuning.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/acceptance.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/failure_inject.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/smoke.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_recovery.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_route_metrics.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_watchdog.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+Evidence saved to .sisyphus/evidence/task-12-static.txt
+---
+RESULTS: 24 passed, 0 failed, 21 skipped
+::endgroup::
+::group::unit-tests
+
+=== Running unit tests ===
+Running test_find_at_port.sh...
+[FAIL] mock-port-ttyUSB2: expected stdout=/dev/ttyUSB2 exit=0, got stdout='' exit=126
+[FAIL] mock-port-ttyUSB0: expected stdout=/dev/ttyUSB0 exit=0, got stdout='' exit=126
+[FAIL] mock-port-no-arg: expected exit=2, got exit=126
+[FAIL] unknown-flag: expected exit=2, got exit=126
+[FAIL] dry-run-exits-3: expected exit=3, got exit=126
+[PASS] syntax-check: bash -n scripts/find-at-port.sh passes syntax check
+---
+RESULTS: 1 passed, 5 failed, 0 skipped
+  ✗ test_find_at_port.sh failed
+Running test_placeholder.sh...
+[PASS] harness-sanity: test framework loads and runs correctly
+---
+RESULTS: 1 passed, 0 failed, 0 skipped
+  ✓ test_placeholder.sh passed
+Running test_recovery.sh...
+[FAIL] missing-level-exits-2: expected exit 2, got 126
+[FAIL] invalid-level-5-exits-2: expected exit 2, got 126
+[FAIL] l1-dry-run: exit=126 output did not contain 'would run': /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 32: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l2-dry-run: exit=126 or missing link bounce log: /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 42: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l3-dry-run: exit=126 or missing USB rebind log: /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 52: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l4-dry-run-mock-port: exit=126 or find-at-port.sh was invoked unexpectedly
+[PASS] no-reboot-in-recovery: no reboot/shutdown/systemctl reboot found in recovery script
+[PASS] recovery-syntax: bash -n scripts/lte-recovery.sh
+---
+RESULTS: 2 passed, 6 failed, 0 skipped
+  ✗ test_recovery.sh failed
+Running test_route_metrics.sh...
+[PASS] lte0-metric-1000: network/20-lte0.network contains RouteMetric=1000
+[PASS] eth0-metric-100: network/10-eth0.network contains RouteMetric=100
+[PASS] eth1-metric-100: network/10-eth1.network contains RouteMetric=100
+[PASS] eth-lower-than-lte: Ethernet metrics (100,100) < LTE metric (1000)
+[PASS] lte-higher-than-eth: LTE metric (1000) > Ethernet metrics (100,100)
+[PASS] eth0-no-phantom-routes: network/10-eth0.network has ConfigureWithoutCarrier=no
+[PASS] eth1-no-phantom-routes: network/10-eth1.network has ConfigureWithoutCarrier=no
+---
+RESULTS: 7 passed, 0 failed, 0 skipped
+  ✓ test_route_metrics.sh passed
+Running test_static_validation.sh...
+=== Static Validation ===
+Repo root: /home/suind/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T10:32:06Z
+
+Found 21 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/lte-evidence-pack.sh
+  scripts/lte-recovery.sh
+  scripts/lte-watchdog.sh
+  scripts/validate.sh
+  scripts/verify-tuning.sh
+  tests/integration/acceptance.sh
+  tests/integration/failure_inject.sh
+  tests/integration/run_all.sh
+  tests/integration/smoke.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_recovery.sh
+  tests/unit/test_route_metrics.sh
+  tests/unit/test_static_validation.sh
+  tests/unit/test_watchdog.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/lte-evidence-pack.sh: syntax OK
+[PASS] bash-n: scripts/lte-recovery.sh: syntax OK
+[PASS] bash-n: scripts/lte-watchdog.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: scripts/verify-tuning.sh: syntax OK
+[PASS] bash-n: tests/integration/acceptance.sh: syntax OK
+[PASS] bash-n: tests/integration/failure_inject.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/integration/smoke.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_recovery.sh: syntax OK
+[PASS] bash-n: tests/unit/test_route_metrics.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+[PASS] bash-n: tests/unit/test_watchdog.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-evidence-pack.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-recovery.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-watchdog.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/verify-tuning.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/acceptance.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/failure_inject.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/smoke.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_recovery.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_route_metrics.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_watchdog.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+Evidence saved to .sisyphus/evidence/task-12-static.txt
+---
+RESULTS: 24 passed, 0 failed, 21 skipped
+  ✓ test_static_validation.sh passed
+Running test_watchdog.sh...
+[FAIL] singleton-lockfile: expected second instance failure with active first process
+[FAIL] no-coverage-no-recovery: expected state NO_COVERAGE and no recovery invocation
+[FAIL] state-transition-log: missing transition log entry
+[PASS] no-reboot-action: no reboot/shutdown/systemctl reboot command found
+[PASS] watchdog-syntax: bash -n scripts/lte-watchdog.sh
+---
+RESULTS: 2 passed, 3 failed, 0 skipped
+  ✗ test_watchdog.sh failed
+::endgroup::
+
+=== Validate Summary ===
+static_exit=0
+unit_exit=3
+  overall:    FAIL
+[FAIL] Step 1: Static Validation (2s)
+
+[STEP 2] Unit Tests
+Running test_find_at_port.sh...
+[FAIL] mock-port-ttyUSB2: expected stdout=/dev/ttyUSB2 exit=0, got stdout='' exit=126
+[FAIL] mock-port-ttyUSB0: expected stdout=/dev/ttyUSB0 exit=0, got stdout='' exit=126
+[FAIL] mock-port-no-arg: expected exit=2, got exit=126
+[FAIL] unknown-flag: expected exit=2, got exit=126
+[FAIL] dry-run-exits-3: expected exit=3, got exit=126
+[PASS] syntax-check: bash -n scripts/find-at-port.sh passes syntax check
+---
+RESULTS: 1 passed, 5 failed, 0 skipped
+  ✗ test_find_at_port.sh failed
+Running test_placeholder.sh...
+[PASS] harness-sanity: test framework loads and runs correctly
+---
+RESULTS: 1 passed, 0 failed, 0 skipped
+  ✓ test_placeholder.sh passed
+Running test_recovery.sh...
+[FAIL] missing-level-exits-2: expected exit 2, got 126
+[FAIL] invalid-level-5-exits-2: expected exit 2, got 126
+[FAIL] l1-dry-run: exit=126 output did not contain 'would run': /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 32: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l2-dry-run: exit=126 or missing link bounce log: /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 42: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l3-dry-run: exit=126 or missing USB rebind log: /home/suind/MavlinkRelay/lte_module/tests/unit/test_recovery.sh: line 52: /home/suind/MavlinkRelay/lte_module/scripts/lte-recovery.sh: Permission denied
+[FAIL] l4-dry-run-mock-port: exit=126 or find-at-port.sh was invoked unexpectedly
+[PASS] no-reboot-in-recovery: no reboot/shutdown/systemctl reboot found in recovery script
+[PASS] recovery-syntax: bash -n scripts/lte-recovery.sh
+---
+RESULTS: 2 passed, 6 failed, 0 skipped
+  ✗ test_recovery.sh failed
+Running test_route_metrics.sh...
+[PASS] lte0-metric-1000: network/20-lte0.network contains RouteMetric=1000
+[PASS] eth0-metric-100: network/10-eth0.network contains RouteMetric=100
+[PASS] eth1-metric-100: network/10-eth1.network contains RouteMetric=100
+[PASS] eth-lower-than-lte: Ethernet metrics (100,100) < LTE metric (1000)
+[PASS] lte-higher-than-eth: LTE metric (1000) > Ethernet metrics (100,100)
+[PASS] eth0-no-phantom-routes: network/10-eth0.network has ConfigureWithoutCarrier=no
+[PASS] eth1-no-phantom-routes: network/10-eth1.network has ConfigureWithoutCarrier=no
+---
+RESULTS: 7 passed, 0 failed, 0 skipped
+  ✓ test_route_metrics.sh passed
+Running test_static_validation.sh...
+=== Static Validation ===
+Repo root: /home/suind/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T10:32:08Z
+
+Found 21 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/lte-evidence-pack.sh
+  scripts/lte-recovery.sh
+  scripts/lte-watchdog.sh
+  scripts/validate.sh
+  scripts/verify-tuning.sh
+  tests/integration/acceptance.sh
+  tests/integration/failure_inject.sh
+  tests/integration/run_all.sh
+  tests/integration/smoke.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_recovery.sh
+  tests/unit/test_route_metrics.sh
+  tests/unit/test_static_validation.sh
+  tests/unit/test_watchdog.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/lte-evidence-pack.sh: syntax OK
+[PASS] bash-n: scripts/lte-recovery.sh: syntax OK
+[PASS] bash-n: scripts/lte-watchdog.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: scripts/verify-tuning.sh: syntax OK
+[PASS] bash-n: tests/integration/acceptance.sh: syntax OK
+[PASS] bash-n: tests/integration/failure_inject.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/integration/smoke.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_recovery.sh: syntax OK
+[PASS] bash-n: tests/unit/test_route_metrics.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+[PASS] bash-n: tests/unit/test_watchdog.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-evidence-pack.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-recovery.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-watchdog.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/verify-tuning.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/acceptance.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/failure_inject.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/smoke.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_recovery.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_route_metrics.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_watchdog.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+Evidence saved to .sisyphus/evidence/task-12-static.txt
+---
+RESULTS: 24 passed, 0 failed, 21 skipped
+  ✓ test_static_validation.sh passed
+Running test_watchdog.sh...
+[FAIL] singleton-lockfile: expected second instance failure with active first process
+[FAIL] no-coverage-no-recovery: expected state NO_COVERAGE and no recovery invocation
+[FAIL] state-transition-log: missing transition log entry
+[PASS] no-reboot-action: no reboot/shutdown/systemctl reboot command found
+[PASS] watchdog-syntax: bash -n scripts/lte-watchdog.sh
+---
+RESULTS: 2 passed, 3 failed, 0 skipped
+  ✗ test_watchdog.sh failed
+[FAIL] Step 2: Unit Tests (2s)
+
+[STEP 3] Smoke Tests
+Starting hardware-in-loop smoke checks for lte0 (2c7c:0901)
+[PASS] usb-enum: Bus 001 Device 004: ID 2c7c:0901  
+[FAIL] cdc-ether-driver: driver=cdc_ether or interface lte0 missing
+[FAIL] lte0-up-ipv4: lte0 is not UP with IPv4
+[FAIL] lte0-mtu: expected mtu=1400, got mtu=unset
+[FAIL] autosuspend-off: could not resolve /sys/class/net/lte0/device
+[FAIL] ecm-mode: AT port not found
+[FAIL] sim-ready: AT port not found
+[FAIL] lte-data: no IPv4 address on lte0 for DNS probe
+[FAIL] apn-auto: check 8 failed, cannot confirm APN auto/default path
+[FAIL] default-route-lte: no default route via lte0
+Cannot find device "lte0"
+[FAIL] eth-metric-lower: could not determine LTE metric from default route
+---
+RESULTS: 1 passed, 10 failed, 0 skipped
+RESULTS: 1 passed, 10 failed
+[FAIL] Step 3: Smoke Tests (1s)
+
+[STEP 4] Route Metrics
+[PASS] lte0-metric-1000: network/20-lte0.network contains RouteMetric=1000
+[PASS] eth0-metric-100: network/10-eth0.network contains RouteMetric=100
+[PASS] eth1-metric-100: network/10-eth1.network contains RouteMetric=100
+[PASS] eth-lower-than-lte: Ethernet metrics (100,100) < LTE metric (1000)
+[PASS] lte-higher-than-eth: LTE metric (1000) > Ethernet metrics (100,100)
+[PASS] eth0-no-phantom-routes: network/10-eth0.network has ConfigureWithoutCarrier=no
+[PASS] eth1-no-phantom-routes: network/10-eth1.network has ConfigureWithoutCarrier=no
+---
+RESULTS: 7 passed, 0 failed, 0 skipped
+[PASS] Step 4: Route Metrics (0s)
+
+[STEP 5] Failure Scenarios A+B
+[SKIP] main: hardware tests not enabled (set HARDWARE_TESTS=1)
+---
+RESULTS: 0 passed, 0 failed, 1 skipped
+[PASS] Step 5: Failure Scenarios A+B (0s)
+
+[STEP 6] Evidence Pack
+=== DRY-RUN: Would collect the following ===
+Journalctl: lte-watchdog, lte-ecm-bootstrap, lte-enum-guard (24 hours)
+Network: ip addr, ip route, networkctl status
+USB: lsusb, udevadm lte0
+Kernel: dmesg (usb|cdc_ether|lte|2c7c), last 200 lines
+State files: /tmp/lte-watchdog-state, /tmp/lte-watchdog.lock (if present)
+Evidence: .sisyphus/evidence/*.txt (if present)
+Tarball: /tmp/lte-diag-1773311530.tar.gz
+=== DRY-RUN: Complete ===
+[PASS] Step 6: Evidence Pack (0s)
+
+===== ACCEPTANCE SUMMARY =====
+Step 1: Static Validation      [FAIL] 2s
+Step 2: Unit Tests             [FAIL] 2s
+Step 3: Smoke Tests            [FAIL] 1s
+Step 4: Route Metrics          [PASS] 0s
+Step 5: Failure Scenarios A+B  [PASS] 0s
+Step 6: Evidence Pack          [PASS] 0s
+==============================
+Overall: FAIL (3 passed, 3 failed, 0 skipped)
+
+Evidence saved to: /home/suind/MavlinkRelay/lte_module/.sisyphus/evidence/acceptance-20260312_113205.txt

@@ -1,0 +1,46 @@
+Task 22 Evidence: Acceptance Test Checklist Wrapper
+Timestamp: 2026-03-12T09:30:42Z
+
+== Script Creation ==
+File: tests/integration/acceptance.sh
+Lines: 222
+Permissions: -rwxr-xr-x (chmod +x applied)
+
+== Syntax Check ==
+$ bash -n tests/integration/acceptance.sh
+Result: SYNTAX OK (exit 0)
+
+== Dry-Run Output (--skip-hardware) ==
+Invocation: bash tests/integration/acceptance.sh --skip-hardware
+Exit code: 0
+
+===== ACCEPTANCE SUMMARY =====
+Step 1: Static Validation      [PASS] 15s
+Step 2: Unit Tests             [PASS] 16s
+Step 3: Smoke Tests            [SKIP] hardware skipped
+Step 4: Route Metrics          [SKIP] hardware skipped
+Step 5: Failure Scenarios A+B  [SKIP] hardware skipped
+Step 6: Evidence Pack          [PASS] 0s
+==============================
+Overall: PASS (3 passed, 0 failed, 3 skipped)
+
+== Implementation Notes ==
+- No set -euo pipefail (would break ((PASS_COUNT++)) when count=0)
+- failure_inject.sh called with positional args: scenario-a scenario-b (no --scenarios flag)
+- lte-evidence-pack.sh --dry-run exits 0 cleanly in this environment (no graceful skip needed)
+- Evidence teed to .sisyphus/evidence/acceptance-<timestamp>.txt via exec > >(tee -a ...)
+- SECONDS builtin used for elapsed timing
+- All 6 steps implemented; steps 3-5 gate on SKIP_HARDWARE flag
+- Summary table printed with printf alignment
+- Exit 0 only when FAIL_COUNT == 0
+
+== Checklist ==
+[x] tests/integration/acceptance.sh created and executable
+[x] Invokes 6 verification steps in order
+[x] --skip-hardware flag skips steps 3-5 cleanly
+[x] Per-step [PASS]/[FAIL] output with elapsed time
+[x] Final summary shows per-step results and overall verdict
+[x] Evidence file saved to .sisyphus/evidence/acceptance-<timestamp>.txt
+[x] Exit 0 only if all steps pass; never exits early on first failure
+[x] bash -n tests/integration/acceptance.sh exits 0
+[x] bash tests/integration/acceptance.sh --skip-hardware runs successfully

@@ -1,0 +1,29 @@
+[2026-03-12 14:55:07] [INFO] DRY RUN mode enabled: no system changes will be made
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: mkdir -p /usr/local/lib/lte-module
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: mkdir -p /etc/lte-module
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/rules/99-ec200u-lte.rules -> /etc/udev/rules.d/99-ec200u-lte.rules
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/network/10-lte0.link -> /etc/systemd/network/10-lte0.link
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/network/20-lte0.network -> /etc/systemd/network/20-lte0.network
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/network/10-eth0.network -> /etc/systemd/network/10-eth0.network
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/network/10-eth1.network -> /etc/systemd/network/10-eth1.network
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/units/lte-enum-guard.service -> /etc/systemd/system/lte-enum-guard.service
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/units/lte-ecm-bootstrap.service -> /etc/systemd/system/lte-ecm-bootstrap.service
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/units/lte-watchdog.service -> /etc/systemd/system/lte-watchdog.service
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/find-at-port.sh -> /usr/local/lib/lte-module/find-at-port.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/ecm-bootstrap.sh -> /usr/local/lib/lte-module/ecm-bootstrap.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/lte-enum-guard.sh -> /usr/local/lib/lte-module/lte-enum-guard.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/lte-watchdog.sh -> /usr/local/lib/lte-module/lte-watchdog.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/lte-recovery.sh -> /usr/local/lib/lte-module/lte-recovery.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/check-apn.sh -> /usr/local/lib/lte-module/check-apn.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/scripts/lte-evidence-pack.sh -> /usr/local/lib/lte-module/lte-evidence-pack.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/config/params.env -> /etc/lte-module/params.env
+[2026-03-12 14:55:07] [INFO] (dry-run) Would install: /home/kevin/workspace/MavlinkRelay/lte_module/config/lte-watchdog-logrotate -> /etc/logrotate.d/lte-watchdog
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: chmod +x /usr/local/lib/lte-module/*.sh
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: systemctl mask --now nv-l4t-usb-device-mode
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: systemctl daemon-reload
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: udevadm control --reload-rules
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: udevadm trigger
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: systemctl enable --now lte-enum-guard.service
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: systemctl enable --now lte-ecm-bootstrap.service
+[2026-03-12 14:55:07] [INFO] (dry-run) Would run: systemctl enable --now lte-watchdog.service
+Installation complete: 17 file(s) installed, 0 backup(s) created

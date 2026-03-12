@@ -1,0 +1,3 @@
+Task 19 scenario-e evidence placeholder
+Status: not executed in this session
+Script: tests/integration/failure_inject.sh

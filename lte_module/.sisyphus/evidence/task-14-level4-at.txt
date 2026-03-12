@@ -1,0 +1,40 @@
+=== Checking L4 uses find-at-port.sh and not hardcoded /dev/ttyUSB2 ===
+
+--- find-at-port.sh references in lte-recovery.sh ---
+20:#   --mock-port PATH Use PATH as AT port for L4 (skips find-at-port.sh; for testing)
+357:    local find_at_port="$SCRIPT_DIR/find-at-port.sh"
+374:            log_error "L4: find-at-port.sh not found or not executable: ${find_at_port}"
+380:            log_error "L4: find-at-port.sh returned empty — AT port not found"
+
+--- Checking for hardcoded /dev/ttyUSB2 in lte-recovery.sh ---
+PASS: No hardcoded /dev/ttyUSB2 found in lte-recovery.sh
+
+--- L4 AT command section ---
+10:#   L4: AT modem reset via AT+CFUN=1,1 + wait for re-enumeration  (grace: 30s)
+15:#   lte-recovery.sh --level N [--dry-run] [--mock-port PATH]
+20:#   --mock-port PATH Use PATH as AT port for L4 (skips find-at-port.sh; for testing)
+59:MOCK_PORT=""
+75:        --mock-port)
+77:                log_error "--mock-port requires an argument"
+80:            MOCK_PORT="$2"
+351:# Level 4: AT modem reset (AT+CFUN=1,1) + re-enumeration wait
+355:    log_info "L4: AT modem reset via AT+CFUN=1,1"
+357:    local find_at_port="$SCRIPT_DIR/find-at-port.sh"
+360:        log_info "L4: would discover AT port via ${find_at_port}"
+361:        log_info "L4: would send: AT+CFUN=1,1 to discovered AT port"
+367:    # Discover AT port — use --mock-port if provided (for unit testing)
+368:    local at_port=""
+369:    if [[ -n "$MOCK_PORT" ]]; then
+370:        log_info "L4: using mock port: ${MOCK_PORT}"
+371:        at_port="$MOCK_PORT"
+373:        if [[ ! -x "$find_at_port" ]]; then
+374:            log_error "L4: find-at-port.sh not found or not executable: ${find_at_port}"
+377:        log_info "L4: discovering AT port via ${find_at_port}"
+378:        at_port="$("$find_at_port" 2>/dev/null || true)"
+379:        if [[ -z "$at_port" ]]; then
+383:        log_info "L4: AT port discovered: ${at_port}"
+386:    # Send AT+CFUN=1,1 — full modem reset
+388:    log_info "L4: sending AT+CFUN=1,1 to ${at_port}"
+390:        exec 3<>"$at_port"
+391:        printf 'AT+CFUN=1,1\r\n' >&3
+396:        " 3<>"$at_port" 2>/dev/null || true

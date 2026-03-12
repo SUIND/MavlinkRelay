@@ -1,0 +1,8 @@
+/var/log/lte-watchdog/watchdog.log {
+    size 10M
+    rotate 3
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

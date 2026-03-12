@@ -1,0 +1,151 @@
+F4 Scope Fidelity Check — EC200U-CN ECM Deployment
+Date: 2026-03-12
+Repository: /home/kevin/workspace/MavlinkRelay/lte_module
+
+Scope sources reviewed:
+- docs/SCOPE.md (full)
+- docs/CONVENTIONS.md (full)
+- .sisyphus/plans/ec200u-jetson-ecm-deployment.md (read-only, for plan-scope alignment)
+
+============================================================
+1) IN-SCOPE ITEMS — PRESENT or MISSING
+============================================================
+
+1. USB enumeration guard for EC200U-CN (VID:PID 2c7c:0901)
+- Status: PRESENT
+- Evidence:
+  - scripts/lte-enum-guard.sh checks lsusb -d 2c7c:0901 (via LTE_MODEM_VID_PID from config)
+  - units/lte-enum-guard.service present
+
+2. ECM mode enforcement (AT+QCFG="usbnet",1) and verification
+- Status: PRESENT
+- Evidence:
+  - scripts/ecm-bootstrap.sh contains usbnet query/set flow and AT+QCFG="usbnet",1
+  - scripts/check-apn.sh and scripts/verify-tuning.sh support AT-based validation paths
+
+3. Persistent lte0 naming via .link (MAC match)
+- Status: PRESENT
+- Evidence:
+  - network/10-lte0.link includes MACAddress=02:4b:b3:b9:eb:e5 and Name=lte0
+
+4. systemd-networkd LTE config (IPv4-only + MTU tuning)
+- Status: PRESENT
+- Evidence:
+  - network/20-lte0.network: DHCP=ipv4, IPv6AcceptRA=no, LinkLocalAddressing=ipv4
+  - network/10-lte0.link: MTUBytes=1400
+
+5. Ethernet-preferred routing policy (eth metric lower than LTE)
+- Status: PRESENT (implemented, not just documented)
+- Evidence:
+  - network/10-eth0.network RouteMetric=100
+  - network/10-eth1.network RouteMetric=100
+  - network/20-lte0.network RouteMetric=1000
+  - tests/unit/test_route_metrics.sh reports PASS for metric ordering
+
+6. APN auto/default + explicit fallback support
+- Status: PRESENT
+- Evidence:
+  - config/params.env sets LTE_APN="" (auto/default)
+  - scripts/check-apn.sh + scripts/ecm-bootstrap.sh include APN handling paths
+
+7. Layered recovery ladder L1→L4, stopping at modem reset
+- Status: PRESENT
+- Evidence:
+  - scripts/lte-recovery.sh contains L1/L2/L3/L4 executors
+  - scripts/lte-watchdog.sh escalation limited by LTE_WATCHDOG_MAX_RECOVERY_LEVEL=4
+
+8. Absolute guardrail: no host reboot for LTE recovery
+- Status: PRESENT and enforced in code/tests
+- Evidence:
+  - No active reboot/shutdown/systemctl reboot commands in scripts/units/installers
+  - tests include explicit no-reboot assertions (test_recovery.sh, test_watchdog.sh, test_static_validation.sh)
+
+9. Telemetry tuning defaults/documentation
+- Status: PRESENT
+- Evidence:
+  - docs/TUNING.md present
+  - MTU=1400, autosuspend checks, RAT lock guidance implemented/documented
+
+10. Installer/uninstaller deliverables
+- Status: PRESENT
+- Evidence:
+  - install.sh and uninstall.sh exist
+
+11. Hardware-in-loop smoke + failure-injection + acceptance wrappers
+- Status: PRESENT
+- Evidence:
+  - tests/integration/smoke.sh
+  - tests/integration/failure_inject.sh
+  - tests/integration/acceptance.sh
+
+12. Operator troubleshooting documentation
+- Status: PRESENT
+- Evidence:
+  - docs/troubleshooting.md exists
+
+============================================================
+2) OUT-OF-SCOPE ITEMS — ABSENT or PRESENT
+============================================================
+
+1. QMI/MBIM/libqmi/libmbim implementation
+- Status: ABSENT in active code
+- Notes: only appears in scope documentation/non-goal context.
+
+2. NetworkManager/nmcli integration
+- Status: ABSENT in active code
+- Notes: only a defensive comment exists in network/20-lte0.network ("NOT NetworkManager").
+
+3. GPS/NMEA usage
+- Status: ABSENT in active code paths
+- Notes: one comment in rules/99-ec200u-lte.rules mentions "GPS" as a channel impact example; no GPS logic/services/tools are implemented.
+
+4. usb-modeswitch
+- Status: ABSENT
+
+5. Host reboot as recovery action
+- Status: ABSENT
+
+6. IPv6 on LTE (enabled behavior)
+- Status: ABSENT
+- Notes: network/20-lte0.network contains IPv6AcceptRA=no and LinkLocalAddressing=ipv4 (explicit disable posture).
+
+7. OTG role-switch implementation
+- Status: ABSENT
+- Notes:
+  - No /sys OTG role-switch writes found.
+  - scripts/lte-enum-guard.sh masks nv-l4t-usb-device-mode as a precautionary conflict-avoidance action (in-scope per plan/SCOPE context), not OTG role-switch logic.
+
+8. Modem firmware update logic
+- Status: ABSENT
+
+9. ModemManager runtime dependency for operation
+- Status: ABSENT
+- Notes: udev rule sets ID_MM_DEVICE_IGNORE=1 to block interference; this is compliant with scope.
+
+============================================================
+3) CONSTRAINT ENFORCEMENT SUMMARY
+============================================================
+
+A) Ethernet-preferred routing (must be implemented)
+- Implemented in network files with metric gap: Ethernet=100, LTE=1000.
+- Confirmed by unit test output: PASS.
+- Constraint result: ENFORCED.
+
+B) No-host-reboot (must never be recovery action)
+- Recovery ladder tops out at L4 modem reset (AT+CFUN=1,1).
+- Active code scan found no reboot/shutdown/systemctl reboot recovery actions.
+- Tests explicitly assert no reboot command presence.
+- Constraint result: ENFORCED.
+
+C) ECM-only/systemd-networkd-only boundary preservation
+- ECM scripts, networkd artifacts, and relevant tests/docs are present.
+- Forbidden stacks (QMI/MBIM/NetworkManager) are not implemented.
+- Constraint result: ENFORCED.
+
+============================================================
+4) FINAL ASSESSMENT
+============================================================
+
+All required in-scope capabilities are present in deliverables, forbidden out-of-scope implementations are absent from active code, and the two critical constraints (Ethernet primary + never reboot host for LTE recovery) are preserved and actively enforced.
+
+VERDICT: APPROVE

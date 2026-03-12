@@ -1,0 +1,5 @@
+Running test_placeholder.sh...
+[PASS] harness-sanity: test framework loads and runs correctly
+---
+RESULTS: 1 passed, 0 failed, 0 skipped
+  ✓ test_placeholder.sh passed

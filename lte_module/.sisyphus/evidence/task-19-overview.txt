@@ -1,0 +1,4 @@
+Task 19: failure_inject.sh created
+Scenarios: A (DHCP loss), B (link down), C (USB rebind*), D (no-coverage), E (full recovery*)
+* = requires --all flag or explicit scenario name (disruptive)
+bash -n syntax check: PASS

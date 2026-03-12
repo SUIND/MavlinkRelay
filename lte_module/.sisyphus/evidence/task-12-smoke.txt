@@ -1,0 +1,133 @@
+=== Running static validation ===
+=== Static Validation ===
+Repo root: /home/kevin/workspace/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T08:22:42Z
+
+Found 11 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/validate.sh
+  tests/integration/run_all.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_static_validation.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+Evidence saved to .sisyphus/evidence/task-12-static.txt
+---
+RESULTS: 14 passed, 0 failed, 11 skipped
+
+=== Running unit tests ===
+Running test_find_at_port.sh...
+[PASS] mock-port-ttyUSB2: --mock-port /dev/ttyUSB2 → stdout=/dev/ttyUSB2, exit=0
+[PASS] mock-port-ttyUSB0: --mock-port /dev/ttyUSB0 → stdout=/dev/ttyUSB0, exit=0
+[PASS] mock-port-no-arg: --mock-port (no arg) exits 2 (config error)
+[PASS] unknown-flag: --bogus exits 2 (config error)
+[PASS] dry-run-exits-3: --dry-run exits 3 (no AT port in dry-run mode)
+[PASS] syntax-check: bash -n scripts/find-at-port.sh passes syntax check
+---
+RESULTS: 6 passed, 0 failed, 0 skipped
+  ✓ test_find_at_port.sh passed
+Running test_placeholder.sh...
+[PASS] harness-sanity: test framework loads and runs correctly
+---
+RESULTS: 1 passed, 0 failed, 0 skipped
+  ✓ test_placeholder.sh passed
+Running test_static_validation.sh...
+=== Static Validation ===
+Repo root: /home/kevin/workspace/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T08:22:42Z
+
+Found 11 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/validate.sh
+  tests/integration/run_all.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_static_validation.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+Evidence saved to .sisyphus/evidence/task-12-static.txt
+---
+RESULTS: 14 passed, 0 failed, 11 skipped
+  ✓ test_static_validation.sh passed
+
+=== Validate Summary ===
+  static:     PASS
+  unit tests: PASS
+  overall:    PASS

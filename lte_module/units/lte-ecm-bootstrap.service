@@ -1,0 +1,15 @@
+[Unit]
+Description=EC200U-CN ECM Mode Bootstrap
+After=lte-enum-guard.service
+Wants=lte-enum-guard.service
+Before=systemd-networkd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash /opt/lte-module/scripts/ecm-bootstrap.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

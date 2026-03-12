@@ -1,0 +1,22 @@
+# EC200U-CN LTE Interface Network Configuration
+# Managed by systemd-networkd (NOT NetworkManager)
+# Interface lte0 is renamed from usb0 by 10-lte0.link via MAC match
+
+[Match]
+Name=lte0
+
+[Network]
+DHCP=ipv4
+IPv6AcceptRA=no
+LinkLocalAddressing=ipv4
+
+[DHCP]
+RouteMetric=1000
+UseDNS=yes
+UseNTP=no
+SendHostname=yes
+# EC200U-CN DHCP server hands short leases; keep renewing aggressively
+MaxAttempts=5
+
+[Link]
+RequiredForOnline=no

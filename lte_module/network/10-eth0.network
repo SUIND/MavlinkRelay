@@ -1,0 +1,20 @@
+# Secondary Ethernet Interface Network Configuration
+# Managed by systemd-networkd
+# Interface eth0: Secondary NIC with metric 100 (same as eth1 for tie-breaking)
+
+[Match]
+Name=eth0
+
+[Network]
+DHCP=ipv4
+IPv6AcceptRA=no
+ConfigureWithoutCarrier=no
+
+[DHCP]
+RouteMetric=100
+UseDNS=yes
+UseNTP=no
+SendHostname=yes
+
+[Link]
+RequiredForOnline=no

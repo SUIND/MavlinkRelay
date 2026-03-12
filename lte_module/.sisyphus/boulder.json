@@ -1,0 +1,10 @@
+{
+  "active_plan": "/home/kevin/workspace/MavlinkRelay/lte_module/.sisyphus/plans/ec200u-jetson-ecm-deployment.md",
+  "started_at": "2026-03-12T07:38:09.686Z",
+  "session_ids": [
+    "ses_31f260283ffekjNWQd0k20yLQj"
+  ],
+  "plan_name": "ec200u-jetson-ecm-deployment",
+  "worktree_path": "/home/kevin/workspace/MavlinkRelay/lte_module",
+  "agent": "atlas"
+}

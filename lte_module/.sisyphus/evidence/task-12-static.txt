@@ -1,0 +1,83 @@
+=== Static Validation ===
+Repo root: /home/kevin/workspace/MavlinkRelay/lte_module
+Timestamp: 2026-03-12T09:58:28Z
+
+Found 21 shell script(s):
+  scripts/check-apn.sh
+  scripts/ecm-bootstrap.sh
+  scripts/find-at-port.sh
+  scripts/lte-enum-guard.sh
+  scripts/lte-evidence-pack.sh
+  scripts/lte-recovery.sh
+  scripts/lte-watchdog.sh
+  scripts/validate.sh
+  scripts/verify-tuning.sh
+  tests/integration/acceptance.sh
+  tests/integration/failure_inject.sh
+  tests/integration/run_all.sh
+  tests/integration/smoke.sh
+  tests/lib/evidence.sh
+  tests/unit/run_all.sh
+  tests/unit/test_find_at_port.sh
+  tests/unit/test_placeholder.sh
+  tests/unit/test_recovery.sh
+  tests/unit/test_route_metrics.sh
+  tests/unit/test_static_validation.sh
+  tests/unit/test_watchdog.sh
+
+--- bash -n syntax checks ---
+[PASS] bash-n: scripts/check-apn.sh: syntax OK
+[PASS] bash-n: scripts/ecm-bootstrap.sh: syntax OK
+[PASS] bash-n: scripts/find-at-port.sh: syntax OK
+[PASS] bash-n: scripts/lte-enum-guard.sh: syntax OK
+[PASS] bash-n: scripts/lte-evidence-pack.sh: syntax OK
+[PASS] bash-n: scripts/lte-recovery.sh: syntax OK
+[PASS] bash-n: scripts/lte-watchdog.sh: syntax OK
+[PASS] bash-n: scripts/validate.sh: syntax OK
+[PASS] bash-n: scripts/verify-tuning.sh: syntax OK
+[PASS] bash-n: tests/integration/acceptance.sh: syntax OK
+[PASS] bash-n: tests/integration/failure_inject.sh: syntax OK
+[PASS] bash-n: tests/integration/run_all.sh: syntax OK
+[PASS] bash-n: tests/integration/smoke.sh: syntax OK
+[PASS] bash-n: tests/lib/evidence.sh: syntax OK
+[PASS] bash-n: tests/unit/run_all.sh: syntax OK
+[PASS] bash-n: tests/unit/test_find_at_port.sh: syntax OK
+[PASS] bash-n: tests/unit/test_placeholder.sh: syntax OK
+[PASS] bash-n: tests/unit/test_recovery.sh: syntax OK
+[PASS] bash-n: tests/unit/test_route_metrics.sh: syntax OK
+[PASS] bash-n: tests/unit/test_static_validation.sh: syntax OK
+[PASS] bash-n: tests/unit/test_watchdog.sh: syntax OK
+
+--- shellcheck checks ---
+[SKIP] shellcheck: scripts/check-apn.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/ecm-bootstrap.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/find-at-port.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-enum-guard.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-evidence-pack.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-recovery.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/lte-watchdog.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/validate.sh: shellcheck not installed
+[SKIP] shellcheck: scripts/verify-tuning.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/acceptance.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/failure_inject.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/integration/smoke.sh: shellcheck not installed
+[SKIP] shellcheck: tests/lib/evidence.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/run_all.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_find_at_port.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_placeholder.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_recovery.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_route_metrics.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_static_validation.sh: shellcheck not installed
+[SKIP] shellcheck: tests/unit/test_watchdog.sh: shellcheck not installed
+
+--- forbidden pattern checks ---
+Checking: no hardcoded /dev/ttyUSB2 as active code path
+[PASS] no-hardcoded-ttyUSB2: no active /dev/ttyUSB2 references found
+Checking: no reboot/shutdown/systemctl-reboot active commands
+[PASS] no-reboot-cmd: no active reboot/shutdown/systemctl-reboot found
+Checking: no OTG role-switch (echo host > /sys)
+[PASS] no-otg-role-switch: no OTG role-switch pattern found
+
+---
+RESULTS: 24 passed, 0 failed, 21 skipped

@@ -1,0 +1,34 @@
+# Task 16 — RAT Lock Opt-In Evidence
+# Confirms AT+QNWPREFMDE is NOT present in bootstrap scripts;
+# only present in verify-tuning.sh (conditional check) and TUNING.md (documentation)
+# Generated: 2026-03-12
+
+# --- Check: AT+QNWPREFMDE absent from bootstrap scripts ---
+# Command: grep -rn 'QNWPREFMDE' scripts/ecm-bootstrap.sh scripts/find-at-port.sh scripts/check-apn.sh
+# Result:
+CONFIRMED: AT+QNWPREFMDE not present in bootstrap scripts
+
+# --- Files where AT+QNWPREFMDE IS present (expected) ---
+# Command: grep -rn 'QNWPREFMDE' scripts/ docs/
+#
+# scripts/verify-tuning.sh   — conditional check when LTE_RAT_LOCK_ENABLED=1
+# docs/TUNING.md             — documentation of opt-in feature
+# docs/SCOPE.md              — notes LTE_RAT_LOCK_ENABLED is opt-in parameter
+#
+# Specifically in scripts/verify-tuning.sh:
+#   Line 8  (comment): describes the conditional check
+#   Line 264 (comment): section header for the check function
+#   Line 287: log message when LTE_RAT_LOCK_ENABLED=1
+#   Line 291: dry-run log
+#   Line 316: the actual AT+QNWPREFMDE? command (only runs when flag=1)
+#   Line 319: response parsing for +QNWPREFMDE: 2
+#   Line 321: response parsing for +QNWPREFMDE: 0
+#
+# --- RAT lock config in params.env ---
+# LTE_RAT_LOCK_ENABLED=0   <- default disabled (opt-in)
+#
+# --- Rationale ---
+# AT+QNWPREFMDE=2 (LTE-only lock) is NOT sent automatically by bootstrap scripts.
+# It is only verified by verify-tuning.sh when the operator explicitly opts in.
+# This prevents accidental LTE-only lock in areas with marginal LTE coverage.
+# Reference: docs/TUNING.md §3 (LTE-Only RAT Lock)

@@ -1,0 +1,4 @@
+Task 18: config/lte-watchdog-logrotate created
+Size limit: 10M (spec: ≤10MB) ✓
+Rotation count: 3 (spec: ≥2) ✓
+Compress: yes ✓

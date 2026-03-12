@@ -1,0 +1,50 @@
+## EC200U-CN on Jetson Xavier NX — Field Troubleshooting Guide
+
+Purpose: practical, command-first troubleshooting for the Quectel EC200U-CN modem on Jetson Xavier NX. Use this guide at the vehicle site. Follow the hard guardrail: do NOT recommend host-level reboot or shutdown as any recovery action. When uncertain, collect an evidence pack and escalate to support.
+
+Conventions used here:
+- Watchdog states are referenced by name: HEALTHY, DEGRADED, RECOVERING, NO_COVERAGE, FAILED
+- Commands shown in code blocks; copy-paste safe
+- All AT interactions must use `scripts/find-at-port.sh` to discover the AT port dynamically
+- Evidence directory: `.sisyphus/evidence`
+
+Table of contents
+
+1. Modem not enumerating
+2. lte0 has no IP address
+3. Connected but no data
+4. Watchdog stuck in RECOVERING
+5. Watchdog in NO_COVERAGE state
+6. Ethernet not preferred over LTE
+7. QUIC sessions dropping
+
+---
+
+## Quick-reference command table
+
+| Symptom | First command | Where to look |
+|---|---:|---|
+| Modem not enumerating | ```bash
+| lsusb -d 2c7c:0901
+| ``` | dmesg, `systemctl status lte-enum-guard` |
+| lte0 has no IP | ```bash
+| ip addr show lte0
+| ``` | `networkctl status lte0`, `journalctl -u systemd-networkd --since "5 min ago"` |
+| Connected but no data | ```bash
+| dig +short +timeout=3 google.com @8.8.8.8
+| ``` | `ip route`, AT ports via `scripts/find-at-port.sh` |
+| Watchdog stuck in RECOVERING | ```bash
+| tail -n 100 /var/log/lte-watchdog/watchdog.log
+| ``` | watchdog log, `scripts/lte-recovery.sh --level N` output |
+| Watchdog NO_COVERAGE | ```bash
+| grep STATE /var/log/lte-watchdog/watchdog.log | tail -5
+| ``` | `scripts/find-at-port.sh` AT+CEREG? |
+| Ethernet not preferred | ```bash
+| ip -4 route show default
+| ``` | `networkctl list`, check `.network` files |
+| QUIC sessions dropping | ```bash
+| cat /sys/bus/usb/devices/*/power/control | grep -A1 2c7c
+| ``` | usb autosuspend sysfs, app QUIC keepalive config |
+
+---
+

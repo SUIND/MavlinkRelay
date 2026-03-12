@@ -1,0 +1,56 @@
+# Task 16 — QUIC Keepalive Guidance Evidence
+# Excerpt from docs/TUNING.md §4 (QUIC Keepalive Guidance)
+# Generated: 2026-03-12
+
+## 4. QUIC Keepalive Guidance
+
+> **Application-level config only** — this section documents OS-invisible parameters.
+> Do NOT modify `relay_params.yaml` as part of OS-level tuning.
+> This guidance is for the **application operator**, not the system administrator.
+
+### Current Configuration
+
+The MavlinkRelay application uses QUIC with the following default keepalive parameters:
+
+```yaml
+# relay_params.yaml (application config — do NOT modify from lte_module)
+keepalive_ms: 15000       # Send QUIC PING every 15 seconds
+idle_timeout_ms: 60000    # Close connection after 60 seconds idle
+```
+
+### The NAT Timeout Problem
+
+Chinese mobile carriers (China Mobile, China Unicom, China Telecom) and many international LTE
+networks maintain NAT state tables for each active UDP flow. When a UDP flow has no traffic for
+longer than the carrier's NAT timeout:
+
+1. The NAT entry expires silently
+2. Subsequent packets from the ground station cannot reach the UAV (the reverse NAT mapping is gone)
+3. The QUIC connection appears to hang from the UAV side — no error, just silence
+4. Recovery requires a new QUIC handshake, introducing latency
+
+**Observed Chinese carrier NAT timeout: < 15 seconds** for UDP flows.
+
+### Recommendation
+
+Lower `keepalive_ms` to `10000` (10 seconds) for deployment on Chinese carrier networks:
+
+```yaml
+# Recommended for aggressive carrier NAT environments
+keepalive_ms: 10000       # Send QUIC PING every 10 seconds (was 15000)
+idle_timeout_ms: 60000    # Unchanged
+```
+
+This ensures a QUIC PING keepalive packet crosses the NAT before the carrier's table entry expires.
+
+### Summary
+
+| Parameter       | Current    | Recommended (aggressive NAT) |
+|-----------------|------------|-------------------------------|
+| keepalive_ms    | 15000 ms   | **10000 ms**                  |
+| idle_timeout_ms | 60000 ms   | 60000 ms (unchanged)          |
+
+# --- Source: docs/TUNING.md §4 ---
+# Note: relay_params.yaml was NOT modified. This is documentation guidance only.
+# The lte_module manages OS-level config; keepalive is app-level config.
+# Reference: docs/ROUTING-POLICY.md also recommends keepalive_ms=10000 (Task 4)
