@@ -241,12 +241,19 @@ main() {
         exit 5
     fi
 
-    # IDEMPOTENCY FAST PATH: if lte0 already exists the modem is already in ECM mode.
-    # The EC200U-CN in ECM mode may not expose ttyUSB AT ports; skip AT discovery entirely.
+    # IDEMPOTENCY FAST PATH: lte0 exists AND has carrier (LOWER_UP) AND has an IPv4 address
+    # → data session already active, nothing to do.
+    # If lte0 exists but has NO-CARRIER or no IP → need to initiate data session.
     if [[ "$DRY_RUN" == "false" ]] && ip link show "$LTE_INTERFACE_NAME" &>/dev/null; then
-        log_info "Interface ${LTE_INTERFACE_NAME} already present — ECM mode confirmed active"
-        log_info "=== ECM Bootstrap complete (no-op) ==="
-        exit 0
+        local iface_flags
+        iface_flags=$(ip link show "$LTE_INTERFACE_NAME" 2>/dev/null)
+        if printf '%s' "$iface_flags" | grep -q "LOWER_UP" && \
+           ip -4 addr show "$LTE_INTERFACE_NAME" 2>/dev/null | grep -q "inet "; then
+            log_info "Interface ${LTE_INTERFACE_NAME} is UP with carrier and IPv4 — ECM active"
+            log_info "=== ECM Bootstrap complete (no-op) ==="
+            exit 0
+        fi
+        log_info "Interface ${LTE_INTERFACE_NAME} exists but NO-CARRIER or no IPv4 — attempting AT data session setup"
     fi
 
     # Validate find-at-port.sh is present and executable
@@ -274,56 +281,70 @@ main() {
 
     # -------------------------------------------------------------------------
     # IDEMPOTENCY GATE: query current mode before sending any set commands.
-    # If already ECM (mode 1) → exit 0 immediately, no writes.
+    # If already ECM (mode 1) → fall through to APN+connect step.
+    # If NOT ECM → switch mode, restart, re-enumerate, wait for interface.
     # -------------------------------------------------------------------------
     if query_ecm_mode "$at_port"; then
-        log_info "ECM mode already active — no change required"
-        log_info "=== ECM Bootstrap complete (no-op) ==="
-        exit 0
-    fi
-
-    log_info "Modem is NOT in ECM mode — proceeding with mode switch"
-
-    # Step 1: Set ECM mode
-    log_info "Sending: AT+QCFG=\"usbnet\",1 (select ECM mode)"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "(dry-run) Would send to ${at_port}: AT+QCFG=\"usbnet\",1"
+        log_info "ECM mode already active — checking data session"
     else
-        printf 'AT+QCFG="usbnet",1\r\n' > "$at_port"
-        timeout 3 cat "$at_port" || true
+        log_info "Modem is NOT in ECM mode — proceeding with mode switch"
+
+        log_info "Sending: AT+QCFG=\"usbnet\",1 (select ECM mode)"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "(dry-run) Would send to ${at_port}: AT+QCFG=\"usbnet\",1"
+        else
+            printf 'AT+QCFG="usbnet",1\r\n' > "$at_port"
+            timeout 3 cat "$at_port" || true
+        fi
+
+        log_info "Sending: AT+CFUN=1,1 (modem restart — required to apply USB mode change)"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "(dry-run) Would send to ${at_port}: AT+CFUN=1,1"
+        else
+            printf 'AT+CFUN=1,1\r\n' > "$at_port" || true
+            timeout 3 cat "$at_port" 2>/dev/null || true
+        fi
+
+        log_info "Modem restart command sent — awaiting USB re-enumeration ..."
+
+        if ! wait_for_reenum "$LTE_MODEM_VID_PID"; then
+            log_error "Hardware error: modem failed to re-enumerate after ECM switch"
+            exit 3
+        fi
+
+        if [[ "$DRY_RUN" == "false" ]]; then
+            log_info "Sleeping 2s to allow driver re-bind ..."
+            sleep 2
+        fi
+
+        if ! wait_for_interface "$LTE_INTERFACE_NAME"; then
+            log_error "Network error: interface ${LTE_INTERFACE_NAME} did not appear after re-enumeration"
+            exit 4
+        fi
+
+        log_info "ECM mode successfully enforced — interface ${LTE_INTERFACE_NAME} is present"
     fi
 
-    # Step 2: Restart modem to apply new USB mode
-    log_info "Sending: AT+CFUN=1,1 (modem restart — required to apply USB mode change)"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        log_info "(dry-run) Would send to ${at_port}: AT+CFUN=1,1"
+    if [[ -n "${LTE_APN:-}" ]]; then
+        log_info "Setting APN: ${LTE_APN}"
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_info "(dry-run) Would send: AT+CGDCONT=1,\"IP\",\"${LTE_APN}\""
+        else
+            printf 'AT+CGDCONT=1,"IP","%s"\r\n' "$LTE_APN" > "$at_port" || true
+            sleep 1
+        fi
     else
-        # Modem may disconnect mid-response; ignore errors
-        printf 'AT+CFUN=1,1\r\n' > "$at_port" || true
-        timeout 3 cat "$at_port" 2>/dev/null || true
+        log_info "LTE_APN is empty — using modem default APN (auto-negotiated)"
     fi
 
-    log_info "Modem restart command sent — awaiting USB re-enumeration ..."
-
-    # Step 3: Wait for modem to re-appear on USB bus
-    if ! wait_for_reenum "$LTE_MODEM_VID_PID"; then
-        log_error "Hardware error: modem failed to re-enumerate after ECM switch"
-        exit 3
+    log_info "Triggering ECM data session: AT+QNETDEVCTL=1,1,1"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "(dry-run) Would send: AT+QNETDEVCTL=1,1,1"
+    else
+        printf 'AT+QNETDEVCTL=1,1,1\r\n' > "$at_port" || true
+        sleep 3
     fi
 
-    if [[ "$DRY_RUN" == "false" ]]; then
-        # Allow OS time to re-bind cdc_ether driver and create network interface
-        log_info "Sleeping 2s to allow driver re-bind ..."
-        sleep 2
-    fi
-
-    # Step 4: Wait for lte0 interface to appear
-    if ! wait_for_interface "$LTE_INTERFACE_NAME"; then
-        log_error "Network error: interface ${LTE_INTERFACE_NAME} did not appear after re-enumeration"
-        exit 4
-    fi
-
-    log_info "ECM mode successfully enforced — interface ${LTE_INTERFACE_NAME} is present"
     log_info "=== ECM Bootstrap complete ==="
     exit 0
 }

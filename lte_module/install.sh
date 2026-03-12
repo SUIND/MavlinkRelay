@@ -3,6 +3,7 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY_RUN=0
 ASSUME_YES=0
+LTE_APN_ARG=""
 
 INSTALLED_COUNT=0
 BACKUP_COUNT=0
@@ -26,10 +27,11 @@ FILES=(
   "scripts/lte-evidence-pack.sh:/usr/local/lib/lte-module/lte-evidence-pack.sh"
   "config/params.env:/etc/lte-module/params.env"
   "config/lte-watchdog-logrotate:/etc/logrotate.d/lte-watchdog"
+  "config/ec200u-lte.modules:/etc/modules-load.d/ec200u-lte.conf"
 )
 
 usage() {
-  echo "Usage: $0 [--dry-run] [--yes]"
+  echo "Usage: $0 [--dry-run] [--yes] [--apn <apn>]"
 }
 
 log() {
@@ -132,6 +134,28 @@ confirm_or_abort() {
   esac
 }
 
+
+detect_modem_mac() {
+  local iface_path
+  for iface_path in /sys/class/net/*/; do
+    local device_path
+    device_path=$(readlink -f "${iface_path}device" 2>/dev/null) || continue
+    local check_path="$device_path"
+    local _i
+    for _i in 1 2 3; do
+      check_path=$(dirname "$check_path")
+      local vid pid
+      vid=$(cat "${check_path}/idVendor" 2>/dev/null || true)
+      pid=$(cat "${check_path}/idProduct" 2>/dev/null || true)
+      if [[ "$vid" == "2c7c" && "$pid" == "0901" ]]; then
+        cat "${iface_path}address" 2>/dev/null
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
@@ -141,6 +165,15 @@ while [[ $# -gt 0 ]]; do
     --yes)
       ASSUME_YES=1
       shift
+      ;;
+    --apn)
+      if [[ $# -lt 2 ]]; then
+        log ERROR "--apn requires an argument"
+        usage
+        exit 2
+      fi
+      LTE_APN_ARG="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -167,12 +200,37 @@ confirm_or_abort
 
 run_cmd 0 mkdir -p /usr/local/lib/lte-module
 run_cmd 0 mkdir -p /etc/lte-module
+run_cmd 0 mkdir -p /etc/modules-load.d
 
 for entry in "${FILES[@]}"; do
   rel_src="${entry%%:*}"
   dst="${entry#*:}"
   copy_with_backup "$rel_src" "$dst"
 done
+
+if [[ -n "$LTE_APN_ARG" ]]; then
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log INFO "(dry-run) Would append: LTE_APN=\"${LTE_APN_ARG}\" to /etc/lte-module/params.env"
+  else
+    printf 'LTE_APN="%s"\n' "$LTE_APN_ARG" >> /etc/lte-module/params.env
+    log INFO "Set LTE_APN=\"${LTE_APN_ARG}\" in /etc/lte-module/params.env"
+  fi
+fi
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  log INFO "(dry-run) Would detect modem MAC and patch /etc/systemd/network/10-lte0.link"
+else
+  detected_mac=""
+  detected_mac=$(detect_modem_mac || true)
+  if [[ -n "$detected_mac" ]]; then
+    log INFO "Detected modem MAC: ${detected_mac}"
+    sed -i "s/__MODEM_MAC__/${detected_mac}/g" /etc/systemd/network/10-lte0.link
+    log INFO "Patched /etc/systemd/network/10-lte0.link with MAC ${detected_mac}"
+  else
+    log WARN "Modem not detected in sysfs — /etc/systemd/network/10-lte0.link still contains __MODEM_MAC__ placeholder"
+    log WARN "Connect the modem and re-run install.sh to complete MAC detection"
+  fi
+fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   log INFO "(dry-run) Would run: chmod +x /usr/local/lib/lte-module/*.sh"

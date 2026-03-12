@@ -5,7 +5,7 @@
 #
 # HARDWARE IDENTIFICATION:
 # - VID:PID: 2c7c:0901 (Quectel EC200U-CN)
-# - MAC: 02:4b:b3:b9:eb:e5 (CONFIRMED STABLE across hot-plug re-enumeration)
+# - MAC: __MODEM_MAC__ (auto-detected by install.sh from sysfs at install time)
 #   * Device re-enumeration during kernel version changes or reboots may result in
 #     different USB device numbers (e.g. /dev/bus/usb/X/Y changes)
 #   * However, the MAC address remains identical — this is the stable identifier
@@ -13,15 +13,14 @@
 # - Driver: cdc_ether
 #
 # MATCHING STRATEGY:
-# We use MAC-based matching (MACAddress=02:4b:b3:b9:eb:e5) instead of USB path
+# We use MAC-based matching (MACAddress=<auto-detected by install.sh>) instead of USB path
 # matching (KERNELS=...) because:
 # - USB device paths can change between kernel versions and reboots
 # - MAC addresses are burned into the modem's hardware and remain stable
 # - This ensures the rename persists across firmware updates and device changes
 #
 # IF MAC CHANGES (when using a different EC200U unit):
-# Update the MACAddress line below to match the new hardware's MAC.
-# To find the MAC: ip link show or cat /sys/class/net/usb0/address
+# install.sh auto-detects the MAC from sysfs at install time. Re-run install.sh on the new unit.
 #
 # DEPLOYMENT:
 # This file must be installed to /etc/systemd/network/10-lte0.link on the target system.
@@ -44,7 +43,7 @@
 
 [Match]
 # Match on the stable MAC address of the EC200U-CN modem
-MACAddress=02:4b:b3:b9:eb:e5
+MACAddress=__MODEM_MAC__
 
 [Link]
 # Rename the interface to 'lte0'
