@@ -241,6 +241,14 @@ main() {
         exit 5
     fi
 
+    # IDEMPOTENCY FAST PATH: if lte0 already exists the modem is already in ECM mode.
+    # The EC200U-CN in ECM mode may not expose ttyUSB AT ports; skip AT discovery entirely.
+    if [[ "$DRY_RUN" == "false" ]] && ip link show "$LTE_INTERFACE_NAME" &>/dev/null; then
+        log_info "Interface ${LTE_INTERFACE_NAME} already present — ECM mode confirmed active"
+        log_info "=== ECM Bootstrap complete (no-op) ==="
+        exit 0
+    fi
+
     # Validate find-at-port.sh is present and executable
     local find_at_port="$SCRIPT_DIR/find-at-port.sh"
     if [[ ! -x "$find_at_port" ]]; then

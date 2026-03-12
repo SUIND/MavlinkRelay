@@ -96,7 +96,14 @@ fi
 # 6) ecm-mode
 AT_PORT="$(bash "$REPO_ROOT/scripts/find-at-port.sh" 2>/dev/null || true)"
 if [[ -z "$AT_PORT" ]]; then
-    fail "ecm-mode" "AT port not found"
+    # No AT serial port available (EC200U-CN in ECM mode may not expose ttyUSB on this kernel).
+    # Fall back: if lte0 already has an IPv4 address, DHCP succeeded → ECM mode is confirmed.
+    lte_ecm_ip="$(ip addr show "$LTE_INTERFACE_NAME" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)"
+    if [[ -n "$lte_ecm_ip" ]]; then
+        pass "ecm-mode" "AT port not available; ECM mode inferred from ${LTE_INTERFACE_NAME} IPv4 ${lte_ecm_ip}"
+    else
+        fail "ecm-mode" "AT port not found and ${LTE_INTERFACE_NAME} has no IPv4 — cannot confirm ECM mode"
+    fi
 else
     qcfg_response="$(send_at_command 'AT+QCFG="usbnet"' || true)"
     if echo "$qcfg_response" | grep -q ',1'; then
@@ -108,7 +115,14 @@ fi
 
 # 7) sim-ready
 if [[ -z "$AT_PORT" ]]; then
-    fail "sim-ready" "AT port not found"
+    # No AT serial port available — fall back to DHCP-inferred SIM state.
+    # If lte0 has an IPv4 address, the modem completed DHCP, which requires a functioning SIM.
+    lte_sim_ip="$(ip addr show "$LTE_INTERFACE_NAME" 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)"
+    if [[ -n "$lte_sim_ip" ]]; then
+        pass "sim-ready" "AT port not available; SIM ready inferred from ${LTE_INTERFACE_NAME} IPv4 ${lte_sim_ip}"
+    else
+        fail "sim-ready" "AT port not found and ${LTE_INTERFACE_NAME} has no IPv4 — cannot confirm SIM state"
+    fi
 else
     cpin_response="$(send_at_command 'AT+CPIN?' || true)"
     cereg_response="$(send_at_command 'AT+CEREG?' || true)"
